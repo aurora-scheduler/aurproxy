@@ -12,8 +12,4 @@
 # limitations under the License.
 #
 
-python_library(name='share',
-  dependencies=[
-  ],
-  sources=globs('tellaprt/aurproxy/share/*.py'),
-)
+source_root('tellapart', python_tests, python_test_suite, python_library)

@@ -13,7 +13,8 @@
 #
 
 python_library(
-  name = 'aurproxy',
+  name = '_library',
+  sources = rglobs('*.py'),
   dependencies = [
     '3rdparty/python:boto',
     '3rdparty/python:commandr',
@@ -26,17 +27,20 @@ python_library(
     '3rdparty/python:python-dateutil',
     '3rdparty/python:raven',
     '3rdparty/python:requests',
-    'tellapart/aurproxy/app/module',
-    'tellapart/aurproxy/app',
-    'tellapart/aurproxy/backends/nginx',
-    'tellapart/aurproxy/backends',
-    'tellapart/aurproxy/config',
-    'tellapart/aurproxy/metrics',
-    'tellapart/aurproxy/register',
-    'tellapart/aurproxy/share/adjusters',
-    'tellapart/aurproxy/share',
-    'tellapart/aurproxy/source/sources',
-    'tellapart/aurproxy/source',
+    'tellapart/aurproxytest/backends/nginx',
+    'tellapart/aurproxytest/backends',
+    'tellapart/aurproxytest/share/adjusters',
+    'tellapart/aurproxytest/share',
+    'tellapart/aurproxytest/source/sources',
+    'tellapart/aurproxytest/source',
+    'tellapart/aurproxytest',
   ],
-  sources=globs('tellaprt/aurproxy/*.py'),
+)
+
+python_binary(
+  name='aurproxy',
+  dependencies=[
+    ':_library',
+  ],
+  source='tellapart/aurproxytest/*.py',
 )

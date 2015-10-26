@@ -12,8 +12,20 @@
 # limitations under the License.
 #
 
-python_library(name='share',
-  dependencies=[
+python_library(
+  name = 'tellapart',
+  dependencies = [
+    '3rdparty/python:boto',
+    '3rdparty/python:commandr',
+    '3rdparty/python:Flask-RESTful',
+    '3rdparty/python:gevent',
+    '3rdparty/python:Jinja2',
+    '3rdparty/python:kazoo',
+    '3rdparty/python:librato-metrics',
+    '3rdparty/python:psutil',
+    '3rdparty/python:python-dateutil',
+    '3rdparty/python:raven',
+    '3rdparty/python:requests',
   ],
-  sources=globs('tellaprt/aurproxy/share/*.py'),
+  sources=globs('tellaprt/*.py'),
 )
