@@ -15,5 +15,5 @@
 python_library(name='register',
   dependencies=[
   ],
-  sources=globs('tellaprt/aurproxy/register/*.py'),
+  sources=globs('tellapart/aurproxy/register/*.py'),
 )

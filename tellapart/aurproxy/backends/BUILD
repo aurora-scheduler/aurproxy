@@ -15,5 +15,5 @@
 python_library(name='backends',
   dependencies=[
   ],
-  sources=globs('tellaprt/aurproxy/backends/*.py'),
+  sources=globs('tellapart/aurproxy/backends/*.py'),
 )

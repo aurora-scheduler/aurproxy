@@ -15,5 +15,5 @@
 python_library(name='sources',
   dependencies=[
   ],
-  sources=globs('tellaprt/aurproxy/source/sources/*.py'),
+  sources=globs('tellapart/aurproxy/source/sources/*.py'),
 )

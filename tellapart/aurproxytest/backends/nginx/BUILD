@@ -16,5 +16,5 @@ python_library(name='nginx',
   dependencies=[
     '3rdparty/python:Jinja2',
   ],
-  sources=globs('tellaprt/aurproxy/backends/nginx/*.py'),
+  sources=globs('tellapart/aurproxy/backends/nginx/*.py'),
 )

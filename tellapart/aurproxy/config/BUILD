@@ -15,5 +15,5 @@
 python_library(name='config',
   dependencies=[
   ],
-  sources=globs('tellaprt/aurproxy/config/*.py'),
+  sources=globs('tellapart/aurproxy/config/*.py'),
 )

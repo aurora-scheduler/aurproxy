@@ -15,5 +15,5 @@
 python_library(name='share',
   dependencies=[
   ],
-  sources=globs('tellaprt/aurproxy/share/*.py'),
+  sources=globs('tellapart/aurproxy/share/*.py'),
 )

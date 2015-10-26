@@ -16,5 +16,5 @@ python_library(name='module',
   dependencies=[
     '3rdparty/python:Flask-RESTful',
   ],
-  sources=globs('tellaprt/aurproxy/app/module/*.py'),
+  sources=globs('tellapart/aurproxy/app/module/*.py'),
 )

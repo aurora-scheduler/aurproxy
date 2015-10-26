@@ -38,5 +38,5 @@ python_library(
     'tellapart/aurproxy/source/sources',
     'tellapart/aurproxy/source',
   ],
-  sources=globs('tellaprt/aurproxy/*.py'),
+  sources=globs('tellapart/aurproxy/*.py'),
 )

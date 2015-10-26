@@ -15,5 +15,5 @@
 python_library(name='adjusters',
   dependencies=[
   ],
-  sources=globs('tellaprt/aurproxy/share/adjusters/*.py'),
+  sources=globs('tellapart/aurproxy/share/adjusters/*.py'),
 )
