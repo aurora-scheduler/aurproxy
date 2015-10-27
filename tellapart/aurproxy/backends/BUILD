@@ -14,6 +14,14 @@
 
 python_library(name='backends',
   dependencies=[
+    'tellapart/aurprroxy/config',
+    'tellapart/aurprroxy/exception',
+    'tellapart/aurprroxy/metrics/store:increment_counter',
+    'tellapart/aurprroxy/source',
+    'tellapart/aurprroxy/util',
+    'tellapart/aurprroxy/util:get_logger',
+    'tellapart/aurprroxy/util:load_klass_factory',
+    'tellapart/aurprroxy/util:load_klass_plugin',
   ],
-  sources=globs('tellapart/aurproxy/backends/*.py'),
+  sources=globs('tellapart/aurproxy/backends/backend.py'),
 )

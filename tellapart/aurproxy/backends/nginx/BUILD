@@ -15,6 +15,14 @@
 python_library(name='nginx',
   dependencies=[
     '3rdparty/python:Jinja2',
+    'tellapart/aurproxy/backends',
+    'tellapart/aurproxy/backends/nginx/metrics',
+    'tellapart/aurproxy/metrics/store:increment_counter',
+    'tellapart/aurproxy/metrics/store:update_counter',
+    'tellapart/aurproxy/metrics/store:update_gauge',
+    'tellapart/aurproxy/util:get_logger',
+    'tellapart/aurproxy/util:move_file',
+    'tellapart/aurproxy/util:run_local',
   ],
   sources=globs('tellapart/aurproxy/backends/nginx/*.py'),
 )

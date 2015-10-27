@@ -15,6 +15,8 @@
 python_library(name='module',
   dependencies=[
     '3rdparty/python:Flask-RESTful',
+    'tellapart/aurproxy/app/lifecycle',
+    'tellapart/aurproxy/metrics/store:root_metric_store',
   ],
-  sources=globs('tellapart/aurproxy/app/module/*.py'),
+  sources=globs('tellapart/aurproxy/app/module/http.py'),
 )
