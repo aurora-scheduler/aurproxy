@@ -12,8 +12,25 @@
 # limitations under the License.
 #
 
+python_binary(
+  name='tellapart.aurproxy',
+  entry_point = 'tellapart.aurproxy.command',
+  dependencies = [
+    ':aurproxy_lib'
+  ],
+)
+
 python_library(
-  name = 'aurproxy',
+  name = 'tellapart.aurproxy.command',
+  sources = [ 'command.py' ],
+  dependencies = [
+    ':_lib',
+    '3rdparty/python:pex',
+  ]
+)
+
+python_library(
+  name = '_lib',
   dependencies = [
     '3rdparty/python:boto',
     '3rdparty/python:commandr',

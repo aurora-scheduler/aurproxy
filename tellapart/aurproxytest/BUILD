@@ -29,18 +29,8 @@ python_library(
     '3rdparty/python:requests',
     'tellapart/aurproxytest/backends/nginx',
     'tellapart/aurproxytest/backends',
-    'tellapart/aurproxytest/share/adjusters',
     'tellapart/aurproxytest/share',
     'tellapart/aurproxytest/source/sources',
     'tellapart/aurproxytest/source',
-    'tellapart/aurproxytest',
   ],
-)
-
-python_binary(
-  name='aurproxy',
-  dependencies=[
-    ':_library',
-  ],
-  source='tellapart/aurproxytest/*.py',
 )
