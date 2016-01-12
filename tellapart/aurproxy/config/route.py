@@ -16,10 +16,12 @@ class ProxyRoute(object):
   def __init__(self,
                locations,
                empty_endpoint_status_code,
-               source_group_manager):
+               source_group_manager,
+               use_https):
     self._locations = locations
     self._empty_endpoint_status_code = empty_endpoint_status_code
     self._source_group_manager = source_group_manager
+    self._protocol = 'https://' if use_https else 'http://'
 
   @property
   def blueprints(self):
@@ -40,6 +42,10 @@ class ProxyRoute(object):
   @property
   def slug(self):
     return self._source_group_manager.slug
+
+  @property
+  def protocol(self):
+    return self._protocol
 
   def start(self, weight_adjustment_start):
     self._source_group_manager.start(weight_adjustment_start)

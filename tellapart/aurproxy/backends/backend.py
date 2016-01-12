@@ -112,6 +112,7 @@ class ProxyBackend(object):
     locations = self._load_config_item('locations', route, required=True)
     sources = self._load_config_item('sources', route, required=True)
     proxy_sources = self._load_proxy_sources(sources)
+    use_https = self._load_config_item('use_https', route, required=False, default=False)
     overflow_sources = self._load_config_item('overflow_sources',
                                               route,
                                               required=False,
@@ -131,7 +132,7 @@ class ProxyBackend(object):
                                               self._signal_update_fn,)
 
     return ProxyRoute(
-        locations, empty_endpoint_status_code, source_group_manager)
+        locations, empty_endpoint_status_code, source_group_manager, use_https)
 
   def _load_proxy_sources(self, sources):
     proxy_sources = []
