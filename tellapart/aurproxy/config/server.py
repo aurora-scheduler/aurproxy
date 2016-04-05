@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import itertools
-
+import hashlib
 from tellapart.aurproxy.util import slugify
 
 class ProxyServer(object):
@@ -36,7 +36,7 @@ class ProxyServer(object):
       s = '{0}{1}__'.format(s, hosts_part)
     if ports_part:
       s = '{0}{1}__'.format(s, ports_part)
-    return s
+    return hashlib.sha256(s).hexdigest()
 
   @property
   def blueprints(self):
