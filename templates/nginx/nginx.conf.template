@@ -26,6 +26,9 @@ http {
     client_max_body_size {{ context.client_max_body_size or "1M" }};
     send_timeout 2;
     tcp_nodelay on;
+    server_names_hash_bucket_size {{context.server_names_hash_bucket_size or 64}};
+    server_names_hash_max_size {{context.server_names_hash_max_size or 512}};
+
 
     log_format combined_forwarded_ip '$remote_addr ($http_x_forwarded_for) - '
                                      '$remote_user [$time_local]  '
