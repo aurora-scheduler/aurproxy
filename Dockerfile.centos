@@ -9,8 +9,8 @@ MAINTAINER techops-team@wisertogether.com
 ######
 
 # Update apt repository
-ENV http_proxy=http://10.128.0.14:8118
-ENV HTTP_PROXY=http://10.128.0.14:8118
+ENV http_proxy=http://proxy-aws.internal.wisertogether.com:8118
+ENV HTTP_PROXY=http://proxy-aws.internal.wisertogether.com:8118
 RUN yum update -y
 
 # Install python prerequisites
@@ -20,7 +20,7 @@ RUN curl -x $HTTP_PROXY "https://bootstrap.pypa.io/get-pip.py" -o "/tmp/get-pip.
 RUN python /tmp/get-pip.py --proxy $HTTP_PROXY
 
 # Install go
-RUN yum install -y golang git
+RUN yum install -y golang git libpcap-devel
 
 # Install gor
 ENV GOPATH=/opt/go
@@ -36,12 +36,12 @@ ENV NGX_REQS openssl openssl-libs libxml2 libxslt GeoIP pcre zlib
 RUN yum update -y \
  && yum install -y $NGX_REQS
 
-ENV NGX_DEV_KIT_VER 0.2.19
-ENV NGX_VER 1.9.0
-ENV NGX_MD5 487c26cf0470d8869c41a73621847268
-ENV NGX_STATSD_VER b756a12abf110b9e36399ab7ede346d4bb86d691
-ENV NGX_HEADERS_MORE_VER 0.26
-ENV NGX_ECHO_VER 0.57
+ENV NGX_DEV_KIT_VER 0.3.0
+ENV NGX_VER 1.10.1
+ENV NGX_MD5 088292d9caf6059ef328aa7dda332e44
+ENV NGX_STATSD_VER 07dcefdab2838b5aa68f1233a44fedcda8052b7f
+ENV NGX_HEADERS_MORE_VER 0.30
+ENV NGX_ECHO_VER 0.59
 ENV DEV_PKGS curl pcre-devel zlib-devel openssl-devel libxml2-devel GeoIP-devel
 
 RUN yum update -y \
