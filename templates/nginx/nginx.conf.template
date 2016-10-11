@@ -133,7 +133,7 @@ http {
         {% for location in route.locations %}
         location {{location}} {
             {% if route.endpoints %}
-            proxy_next_upstream off;
+            proxy_next_upstream error timeout;
             proxy_pass {{ route.protocol }}{{ server.slug }}{{ route.slug }}{{route.route_path}};
             {% else %}
             # No endpoints found for {{ server.slug }}{{ route.slug }}
