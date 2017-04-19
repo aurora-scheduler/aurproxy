@@ -128,6 +128,10 @@ http {
         proxy_set_header  X-Real-IP       $remote_addr;
         proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header  Connection      "";
+        {% if server.context.pass_accel_redirect %}
+        proxy_ignore_headers X-Accel-Redirect;
+        proxy_pass_header X-Accel-Redirect;
+        {% endif %}
         {% for route in server.routes %}
         {% for location in route.locations %}
         location {{location}} {
