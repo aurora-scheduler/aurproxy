@@ -31,7 +31,7 @@ class Port(object):
     return u'{}:{}'.format(self.port, self.use_ssl)
 
   def __str__(self):
-      return '{}:{}'.format(self.port, self.use_ssl)
+      return '{}:{}'.format(self.port, 'ssl' if self.use_ssl else '')
 
 
 class ProxyServer(object):
@@ -61,6 +61,7 @@ class ProxyServer(object):
       s = '{0}{1}__'.format(s, hosts_part)
     if ports_part:
       s = '{0}{1}__'.format(s, ports_part)
+    print 'Slugging: {}'.format(s)
     return hashlib.sha256(s).hexdigest()
 
   @property
