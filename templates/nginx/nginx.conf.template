@@ -107,6 +107,7 @@ http {
         ssl_session_timeout         {{ server.context.ssl_session_timeout or '10m' }};
         ssl_ciphers                 {{ server.context.ssl_ciphers or 'HIGH:!aNULL:!MD5' }};
         ssl_prefer_server_ciphers   {{ server.context.ssl_prefer_server_ciphers or 'on' }};
+        ssl_verify_client           {{ server.context.ssl_verify_client or 'off' }};
         {% endif %}
 
         proxy_connect_timeout  {{ server.context.proxy_connect_timeout or 60 }};
