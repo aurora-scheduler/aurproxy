@@ -14,7 +14,9 @@
 
 import itertools
 import hashlib
-from tellapart.aurproxy.util import slugify
+from tellapart.aurproxy.util import slugify, get_logger
+
+logger = get_logger(__name__)
 
 
 class Port(object):
@@ -61,7 +63,7 @@ class ProxyServer(object):
       s = '{0}{1}__'.format(s, hosts_part)
     if ports_part:
       s = '{0}{1}__'.format(s, ports_part)
-    print 'Slugging: {}'.format(s)
+    logger.info('Slugging: {}'.format(s))
     return hashlib.sha256(s).hexdigest()
 
   @property
