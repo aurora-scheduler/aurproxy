@@ -28,7 +28,10 @@ class Port(object):
       self.use_ssl = False
 
   def __unicode__(self):
-    return '{}:{}'.format(self.port, self.use_ssl)
+    return u'{}:{}'.format(self.port, self.use_ssl)
+
+  def __str__(self):
+      return '{}:{}'.format(self.port, self.use_ssl)
 
 
 class ProxyServer(object):

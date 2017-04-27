@@ -95,7 +95,8 @@ http {
     {%- endfor %}
 
     server {
-        {% for port in server.ports %}listen {{ port.port }}{{' ssl ' if port.use_ssl else '' }}{{' default_server' if server.context.default_server == 'True' else ''}};
+        {% for port in server.ports %}
+        listen {{ port.port }}{{' ssl ' if port.use_ssl else '' }}{{' default_server' if server.context.default_server == 'True' else ''}};
         {%- endfor %}
 
         server_name {% for host in server.hosts %}{{ host }}{% if not loop.last%} {% endif %}{% endfor %};
