@@ -95,19 +95,28 @@ http {
     {%- endfor %}
 
     server {
-        {% for port in server.ports %}listen {{ port }}{{' default_server' if server.context.default_server == 'True' else ''}};
+        {% for port in server.ports %}listen {{ port.port }}{{' ssl ' if port.use_ssl else '' }}{{' default_server' if server.context.default_server == 'True' else ''}};
         {%- endfor %}
 
         server_name {% for host in server.hosts %}{{ host }}{% if not loop.last%} {% endif %}{% endfor %};
+
+        {% if server.use_ssl %}
+        ssl_certificate             {{ server.context.ssl_certificate or '"/etc/nginx/server.crt"' }};
+        ssl_certificate_key         {{ server.context.ssl_certificate_key or '"/etc/nginx/server.key"' }};
+        ssl_session_cache           {{ server.context.ssl_session_cache or 'shared:SSL:1m' }};
+        ssl_session_timeout         {{ server.context.ssl_session_timeout or '10m' }};
+        ssl_ciphers                 {{ server.context.ssl_ciphers or 'HIGH:!aNULL:!MD5' }};
+        ssl_prefer_server_ciphers   {{ server.context.ssl_prefer_server_ciphers or 'on' }};
+        {% endif %}
 
         proxy_connect_timeout  {{ server.context.proxy_connect_timeout or 60 }};
         proxy_send_timeout     {{ server.context.proxy_send_timeout or 60 }};
         proxy_read_timeout     {{ server.context.proxy_read_timeout or 60 }};
         send_timeout           {{ server.context.send_timeout or 60 }};
 
-        proxy_buffer_size 64k;
-        proxy_buffers 16 16k;
-        large_client_header_buffers 8 32k;
+        proxy_buffer_size               {{ server.context.proxy_buffer_size or '64k' }};
+        proxy_buffers                   {{ server.context.proxy_buffers or '16 16k' }};
+        large_client_header_buffers     {{ server.context.large_client_header_buffers or '8 32k' }};
 
         location /aurproxy_error.html {
             internal;
@@ -152,7 +161,7 @@ http {
 stream {
    {% for server in stream_servers %}
     server {
-        {% for port in server.ports %}listen {{ port }};
+        {% for port in server.ports %}listen {{ port.port }};
         {%- endfor %}
         proxy_pass {{ server.slug }};
     }

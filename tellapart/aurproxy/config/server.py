@@ -16,10 +16,32 @@ import itertools
 import hashlib
 from tellapart.aurproxy.util import slugify
 
+
+class Port(object):
+  def __init__(self, port):
+    if ':' in port:
+      item = port.split(':')
+      self.port = item[0]
+      self.use_ssl = item[1] == 'use_ssl'
+    else:
+      self.port = port
+      self.use_ssl = False
+
+  def __unicode__(self):
+    return '{}:{}'.format(self.port, self.use_ssl)
+
+
 class ProxyServer(object):
-  def __init__(self, hosts, ports, healthcheck_route, routes, streams, context):
+  def __init__(self,
+               hosts,
+               ports,
+               healthcheck_route,
+               routes,
+               streams,
+               context):
     self.hosts = hosts
-    self.ports = ports
+    self.ports = [Port(x) for x in ports]
+    self.use_ssl = any([True for x in self.ports if x.use_ssl])
     self.healthcheck_route = healthcheck_route
     self.routes = routes
     self.streams = streams
