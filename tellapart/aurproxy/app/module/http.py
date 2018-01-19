@@ -20,29 +20,29 @@ __copyright__ = 'Copyright (C) 2015 TellApart, Inc. All Rights Reserved.'
 from flask import (
   Blueprint,
   Response)
-from flask.ext import restful
+import flask_restful
 
 from tellapart.aurproxy.app import lifecycle
 from tellapart.aurproxy.metrics.store import root_metric_store
 
 # Define a standard blueprint for lifecycle management endpoints
 lifecycle_blueprint = Blueprint('lifecycle', __name__)
-_bp = restful.Api(lifecycle_blueprint)
+_bp = flask_restful.Api(lifecycle_blueprint)
 
 @_bp.resource('/quitquitquit')
-class QuitQuitQuit(restful.Resource):
+class QuitQuitQuit(flask_restful.Resource):
   def post(self):
     lifecycle.execute_shutdown_handlers()
     return 'OK', 200
 
 @_bp.resource('/abortabortabort')
-class AbortAbortAbort(restful.Resource):
+class AbortAbortAbort(flask_restful.Resource):
   def post(self):
     lifecycle.execute_shutdown_handlers()
     return 'OK', 200
 
 @_bp.resource('/health')
-class Health(restful.Resource):
+class Health(flask_restful.Resource):
   def get(self):
     status, message = lifecycle.check_health()
     if not status:
@@ -52,7 +52,7 @@ class Health(restful.Resource):
     return Response(response='OK')
 
 @_bp.resource('/metrics')
-class Metrics(restful.Resource):
+class Metrics(flask_restful.Resource):
   def get(self):
     metrics = root_metric_store().get_metrics()
     ordered_metrics = sorted(metrics, key=lambda metric: metric.name)
@@ -61,7 +61,7 @@ class Metrics(restful.Resource):
     return Response(response=joined)
 
 @_bp.resource('/metrics.json')
-class MetricsJson(restful.Resource):
+class MetricsJson(flask_restful.Resource):
   def get(self):
     metrics = root_metric_store().get_metrics()
     ordered_metrics = sorted(metrics, key=lambda metric: metric.name)
