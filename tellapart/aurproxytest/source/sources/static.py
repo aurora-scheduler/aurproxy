@@ -22,7 +22,7 @@ class StaticProxySourceTests(unittest.TestCase):
     def noop(): pass
 
     static_source = StaticProxySource(signal_update_fn=noop,
-                                      share_updater_factories=[],
+                                      share_adjuster_factories=[],
                                       name=name,
                                       host=host,
                                       port=port)
