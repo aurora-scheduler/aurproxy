@@ -20,10 +20,10 @@ class StaticProxySource(ProxySource):
 
   def __init__(self,
                signal_update_fn=None,
-               share_updater_factories=None,
+               share_adjuster_factories=None,
                **kwargs):
     super(StaticProxySource, self).__init__(signal_update_fn,
-                                            share_updater_factories)
+                                            share_adjuster_factories)
     self._name = kwargs.get('name')
     self._host = kwargs.get('host')
     self._port = kwargs.get('port')

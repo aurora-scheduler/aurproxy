@@ -52,7 +52,7 @@ class ApiSource(ProxySource):
                name,
                source_whitelist=_DEFAULT_SOURCE_WHITELIST,
                signal_update_fn=None,
-               share_updater_factories=None):
+               share_adjuster_factories=None):
     """
     Args:
       name - Required str name of this API source. Should be unique per
@@ -60,9 +60,9 @@ class ApiSource(ProxySource):
       source_whitelist - Optional list(str) of source class paths that are
         allowed to be instantiated.
       signal_update_fn - Optional callback fn - used to signal need to update.
-      share_updater_factories - Optional list of ShareAdjuster factories.
+      share_adjuster_factories - Optional list of ShareAdjuster factories.
     """
-    super(ApiSource, self).__init__(signal_update_fn, share_updater_factories)
+    super(ApiSource, self).__init__(signal_update_fn, share_adjuster_factories)
     if not name:
       raise AurProxyConfigException(name)
     self._name = name
