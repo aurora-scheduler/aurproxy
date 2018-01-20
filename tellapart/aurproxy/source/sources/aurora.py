@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from .serverset import ServerSetSource
 
 _DEFAULT_ANNOUNCER_SERVERSET_PATH = '/aurora/'
+_DEFAULT_AURORA_SCHEDULER_PATH = '/aurora/scheduler'
 
 
 def get_service_discovery_path(job, announcer_serverset_path):
@@ -42,3 +43,13 @@ class AuroraProxySource(ServerSetSource):
         announcer_serverset_path
     )
     super(AuroraProxySource, self).__init__(serverset_path, zk_servers, **kw)
+
+
+class AuroraMasterProxySource(ServerSetSource):
+
+  def __init__(self,
+               zk_servers,
+               aurora_master_path=_DEFAULT_AURORA_SCHEDULER_PATH,
+               **kw):
+
+    super(AuroraMasterProxySource, self).__init__(aurora_master_path, zk_servers, **kw)

@@ -16,6 +16,7 @@ from .manager import SourceGroupManager
 from .source import ProxySource
 from .sources.api import ApiSource
 from .sources.aurora import AuroraProxySource
+from .sources.aurora import AuroraMasterProxySource
 from .sources.mesos import MesosMasterProxySource
 from .sources.static import StaticProxySource
 from .sources.serverset import ServerSetSource
