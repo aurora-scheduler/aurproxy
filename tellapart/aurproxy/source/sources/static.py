@@ -75,20 +75,20 @@ class StaticListProxySource(ProxySource):
     super(StaticListProxySource, self).__init__(signal_update_fn,
                                                 share_adjuster_factories)
     self._server_set = []
-    server_list = kwargs.get('source_list')
-    logger.debug('kwargs: {0}'.format(kwargs))
-    logger.debug('ServerList: {0}'.format(server_list))
+    server_list = kwargs.get('server_list')
+    logger.info('ServerList: {0}'.format(server_list))
     err_fmt = '"{0}" required on StaticListProxySource'
     for server_info in server_list:
       _host = server_info.get('host')
       _port = server_info.get('port')
+      _share = server_info.get('share') if server_info.get('share') else 1.0
       if not _host:
         raise AurProxyConfigException(err_fmt.format('host'))
       if not _port:
         raise AurProxyConfigException(err_fmt.format('port'))
-      self.add(SourceEndpoint(_host, _port))
-    if self._server_set.count() == 0:
-      raise AurProxyConfigException(err_fmt.format('source_list'))
+      self._server_set.append(ShareEndpoint(_host, _port, _share, 1.0))
+    if self._server_set.count == 0:
+      raise AurProxyConfigException(err_fmt.format('server_list'))
 
   @property
   def blueprint(self):
@@ -96,7 +96,10 @@ class StaticListProxySource(ProxySource):
 
   @property
   def slug(self):
-    return '{0}__{1}__{2}'.format("aa", "bb", "cc")
+    slugs = []
+    for server_info in self._server_set:
+      slugs.append('{0}_{1}'.format(server_info.host, server_info.port))
+    return '__'.join(slugs)
 
   def start(self):
     for server in self._server_set:
