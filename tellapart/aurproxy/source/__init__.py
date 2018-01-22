@@ -19,4 +19,5 @@ from .sources.aurora import AuroraProxySource
 from .sources.aurora import AuroraMasterProxySource
 from .sources.mesos import MesosMasterProxySource
 from .sources.static import StaticProxySource
+from .sources.static import StaticListProxySource
 from .sources.serverset import ServerSetSource

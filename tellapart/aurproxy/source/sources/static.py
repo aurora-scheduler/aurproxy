@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tellapart.aurproxy.config import SourceEndpoint
+from tellapart.aurproxy.config import SourceEndpoint, ShareEndpoint
 from tellapart.aurproxy.exception import AurProxyConfigException
 from tellapart.aurproxy.source import ProxySource
+from tellapart.aurproxy.util import get_logger
+
+logger = get_logger(__name__)
+
 
 class StaticProxySource(ProxySource):
 
@@ -51,3 +55,55 @@ class StaticProxySource(ProxySource):
 
   def stop(self):
     self.remove(self._endpoint)
+
+
+class StaticListProxySource(ProxySource):
+  """
+    ServerListProxy
+  """
+
+  def __init__(self,
+               signal_update_fn=None,
+               share_adjuster_factories=None,
+               **kwargs):
+    """
+
+    :param signal_update_fn:
+    :param share_adjuster_factories:
+    :param kwargs:
+    """
+    super(StaticListProxySource, self).__init__(signal_update_fn,
+                                                share_adjuster_factories)
+    self._server_set = []
+    server_list = kwargs.get('source_list')
+    logger.debug('kwargs: {0}'.format(kwargs))
+    logger.debug('ServerList: {0}'.format(server_list))
+    err_fmt = '"{0}" required on StaticListProxySource'
+    for server_info in server_list:
+      _host = server_info.get('host')
+      _port = server_info.get('port')
+      if not _host:
+        raise AurProxyConfigException(err_fmt.format('host'))
+      if not _port:
+        raise AurProxyConfigException(err_fmt.format('port'))
+      self.add(SourceEndpoint(_host, _port))
+    if self._server_set.count() == 0:
+      raise AurProxyConfigException(err_fmt.format('source_list'))
+
+  @property
+  def blueprint(self):
+    return None
+
+  @property
+  def slug(self):
+    return '{0}__{1}__{2}'.format("aa", "bb", "cc")
+
+  def start(self):
+    for server in self._server_set:
+      logger.info("Add ServerList: {0}".format(server))
+      self.add(server)
+
+  def stop(self):
+    for server in self._server_set:
+      logger.info("Remove ServerList: {0}".format(server))
+      self.remove(server)
