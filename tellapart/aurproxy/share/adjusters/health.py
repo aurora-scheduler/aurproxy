@@ -200,7 +200,8 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
     except requests.exceptions.Timeout:
       check_result = HealthCheckResult.TIMEOUT
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                   HttpHealthCheckLogResult.TIMEOUT)
+                   HttpHealthCheckLogResult.TIMEOUT,
+                   log_fn=logger.error)
     except requests.exceptions.ConnectionError as ex:
       if 'gaierror' in unicode(ex):
         check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
@@ -216,9 +217,10 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       error_log_fn = logger.exception
 
     if error_log_fn:
-      error_log_fn('Exception when executing HttpHealthCheck.')
-      self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                   check_result)
+      self._record(event=HttpHealthCheckLogEvent.RUNNING_CHECK,
+                   result=check_result,
+                   msg='Exception when executing HttpHealthCheck.',
+                   log_fn=error_log_fn)
 
     self._update_status(check_result)
     spawn_later(self._interval, self._check)
