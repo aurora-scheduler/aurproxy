@@ -48,7 +48,7 @@ class NginxProxyMetricsPublisher(object):
   def publish(self):
     """Fetch and publish proxy metrics.
     """
-    logger.info('Publishing proxy metrics.')
+    logger.debug('Publishing proxy metrics.')
     url = 'http://localhost:%s/%s' % (self._port, self._path)
     try:
       res = requests.get(url, timeout=self._timeout)
