@@ -83,7 +83,7 @@ http {
     {% for route in server.routes %}
     {% if route.endpoints %}
     upstream {{ server.slug }}{{ route.slug }} {
-        least_conn;
+        {{route.context.lb_method or 'least_conn'}};
         {% for endpoint in route.endpoints %}{% if not endpoint.weight %}#{% endif %}server {{ endpoint.host }}:{{ endpoint.port }} weight={{ endpoint.weight }}; # {{ endpoint.audit.render() }}
         {% endfor %}
         keepalive 512;

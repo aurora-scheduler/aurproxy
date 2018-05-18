@@ -111,6 +111,7 @@ class ProxyBackend(object):
   def _load_proxy_route(self, route):
     locations = self._load_config_item('locations', route, required=True)
     sources = self._load_config_item('sources', route, required=True)
+    context = self._load_config_item('context', route, required=False)
     proxy_sources = self._load_proxy_sources(sources)
     overflow_sources = self._load_config_item('overflow_sources',
                                               route,
@@ -131,7 +132,7 @@ class ProxyBackend(object):
                                               self._signal_update_fn,)
 
     return ProxyRoute(
-        locations, empty_endpoint_status_code, source_group_manager)
+        locations, empty_endpoint_status_code, source_group_manager, context)
 
   def _load_proxy_sources(self, sources):
     proxy_sources = []
