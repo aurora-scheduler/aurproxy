@@ -23,6 +23,7 @@ from tellapart.aurproxy.util import (
   get_logger,
   move_file,
   run_local)
+from prometheus_client import Counter
 
 logger = get_logger(__name__)
 
@@ -32,9 +33,13 @@ _DEFAULT_TEMPLATE_LOC = './tellapart/aurproxy/templates/' \
 
 _METRIC_UPDATE_SUCCEEDED = 'update_succeeded'
 _METRIC_UPDATE_FAILED = 'update_failed'
+METRIC_UPDATE_SUCCEEDED = Counter('update_succeeded', 'Total update_succeeded')
+METRIC_UPDATE_FAILED = Counter('update_failed', 'Total update_failed', ['type'])
 
 _METRIC_REVERT_SUCCEEDED = 'revert_succeeded'
 _METRIC_REVERT_FAILED = 'revert_failed'
+METRIC_REVERT_SUCCEEDED = Counter('revert_succeeded', 'Total revert_succeeded')
+METRIC_REVERT_FAILED = Counter('revert_failed', 'Total revert_failed', ['type'])
 
 class NginxProxyBackend(ProxyBackend):
   NAME = 'nginx'
@@ -128,8 +133,11 @@ class NginxProxyBackend(ProxyBackend):
       if restart_proxy:
         logger.info('Applying new configuration.')
         self.restart()
-    except Exception:
+        METRIC_UPDATE_SUCCEEDED.inc()
+    except Exception as ex:
       logger.exception('Writing new configuration failed.')
+      increment_counter(_METRIC_UPDATE_FAILED)
+      METRIC_UPDATE_FAILED.labels(type=ex.message).inc()
       revert = True
     finally:
       if revert:
@@ -138,9 +146,11 @@ class NginxProxyBackend(ProxyBackend):
         try:
           self._revert(config_dest)
           increment_counter(_METRIC_REVERT_SUCCEEDED)
-        except Exception:
+          METRIC_REVERT_SUCCEEDED.inc()
+        except Exception as ex:
           logger.exception('Attempt to revert to old configuration failed!')
           increment_counter(_METRIC_REVERT_FAILED)
+          METRIC_REVERT_FAILED.labels(type=ex.message).inc()
     return not revert
 
   def _should_update_config(self, new_config, config_dest):

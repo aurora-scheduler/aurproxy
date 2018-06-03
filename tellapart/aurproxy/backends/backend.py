@@ -32,9 +32,12 @@ from tellapart.aurproxy.util import (
   load_klass_factory,
   load_klass_plugin)
 
+from prometheus_client import Counter
+
 logger = get_logger(__name__)
 
 _METRIC_SIGNAL_UPDATE_EXCEPTION = 'signal_update_exception'
+METRIC_SIGNAL_UPDATE_EXCEPTION = Counter('signal_update_exception', 'Total signal_update_exception', ['type'])
 
 
 class ProxyBackend(object):
@@ -193,9 +196,10 @@ class ProxyBackend(object):
 
     try:
       self._signal_update_fn()
-    except Exception:
+    except Exception as ex:
       logger.exception("Failed to signal update.")
       increment_counter(_METRIC_SIGNAL_UPDATE_EXCEPTION)
+      METRIC_SIGNAL_UPDATE_EXCEPTION.labels(type=ex.message).inc()
 
   def start_discovery(self, weight_adjustment_start):
     if not self._started_discovery:

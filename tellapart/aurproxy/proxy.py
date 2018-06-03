@@ -23,12 +23,18 @@ from tellapart.aurproxy.util import (
   get_logger,
   PeriodicTask)
 
+from prometheus_client import Counter
 
 logger = get_logger(__name__)
 
 _METRIC_UPDATE_ATTEMPTED = 'update_attempted'
 _METRIC_UPDATE_ATTEMPT_SUCCEEDED = 'update_attempt_succeeded'
 _METRIC_UPDATE_ATTEMPT_FAILED = 'update_attempt_failed'
+
+METRIC_UPDATE_ATTEMPTED = Counter('update_attempted', 'Total update_attempted (count)')
+METRIC_UPDATE_ATTEMPT_SUCCEEDED = Counter('update_attempt_succeeded', 'Total update_attempt_succeeded (count)')
+METRIC_UPDATE_ATTEMPT_FAILED = Counter('update_attempt_failed', 'Total update_attempt_failed (count)', ['type'])
+
 
 class ProxyUpdater(object):
   def __init__(self, backend, config, update_period, max_update_frequency):
@@ -94,6 +100,7 @@ class ProxyUpdater(object):
   def _try_update(self, as_of=None):
     try:
       increment_counter(_METRIC_UPDATE_ATTEMPTED)
+      METRIC_UPDATE_ATTEMPTED.inc()
       if not as_of:
         as_of = datetime.now()
 
@@ -103,13 +110,17 @@ class ProxyUpdater(object):
         self._updating= True
         try:
           self._update(restart_proxy=True)
-        except Exception:
+        except Exception as e:
+          increment_counter(_METRIC_UPDATE_ATTEMPT_FAILED)
+          METRIC_UPDATE_ATTEMPT_FAILED.labels(type=e.message).inc()
           logger.exception('Failed to update configuration.')
         finally:
           self._updating = False
-    except Exception:
+    except Exception as e:
       increment_counter(_METRIC_UPDATE_ATTEMPT_FAILED)
+      METRIC_UPDATE_ATTEMPT_FAILED.labels(type=e.message).inc()
       logger.exception('Error updating.')
 
   def _update(self, restart_proxy=True):
     self._backend.update(restart_proxy)
+    METRIC_UPDATE_ATTEMPT_SUCCEEDED.inc()

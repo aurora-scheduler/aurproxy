@@ -21,6 +21,7 @@ from flask import (
   Blueprint,
   Response)
 import flask_restful
+from prometheus_client import generate_latest
 
 from tellapart.aurproxy.app import lifecycle
 from tellapart.aurproxy.metrics.store import root_metric_store
@@ -54,11 +55,12 @@ class Health(flask_restful.Resource):
 @_bp.resource('/metrics')
 class Metrics(flask_restful.Resource):
   def get(self):
-    metrics = root_metric_store().get_metrics()
-    ordered_metrics = sorted(metrics, key=lambda metric: metric.name)
+    #metrics = root_metric_store().get_metrics()
+    #ordered_metrics = sorted(metrics, key=lambda metric: metric.name)
 
-    joined = '\n'.join(['%s %s' % (m.name, m.value()) for m in ordered_metrics])
-    return Response(response=joined)
+    #joined = '\n'.join(['%s %s' % (m.name, m.value()) for m in ordered_metrics])
+    #return Response(response=joined)
+    return Response(response=generate_latest(), mimetype="text/plain")
 
 @_bp.resource('/metrics.json')
 class MetricsJson(flask_restful.Resource):
