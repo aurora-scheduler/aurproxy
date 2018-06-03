@@ -21,7 +21,7 @@ from flask import (
   Blueprint,
   Response)
 import flask_restful
-from prometheus_client import generate_latest
+from prometheus_client import REGISTRY, core
 
 from tellapart.aurproxy.app import lifecycle
 from tellapart.aurproxy.metrics.store import root_metric_store
@@ -55,12 +55,22 @@ class Health(flask_restful.Resource):
 @_bp.resource('/metrics')
 class Metrics(flask_restful.Resource):
   def get(self):
-    #metrics = root_metric_store().get_metrics()
-    #ordered_metrics = sorted(metrics, key=lambda metric: metric.name)
-
-    #joined = '\n'.join(['%s %s' % (m.name, m.value()) for m in ordered_metrics])
-    #return Response(response=joined)
-    return Response(response=generate_latest(), mimetype="text/plain")
+    '''Returns the metrics from the registry in latest text format as a string.'''
+    output = []
+    for metric in REGISTRY.collect():
+        output.append('# HELP {0} {1}'.format(
+            metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
+        output.append('\n# TYPE {0} {1}\n'.format(metric.name, metric.type))
+        for name, labels, value in metric.samples:
+            if labels:
+                labelstr = '{{{0}}}'.format(','.join(
+                    ['{0}="{1}"'.format(
+                     k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
+                     for k, v in sorted(labels.items())]))
+            else:
+                labelstr = ''
+            output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
+    return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
 @_bp.resource('/metrics.json')
 class MetricsJson(flask_restful.Resource):
