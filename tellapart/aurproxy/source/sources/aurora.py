@@ -42,6 +42,9 @@ class AuroraProxySource(ServerSetSource):
         get_job_path(role, environment, job),
         announcer_serverset_path
     )
+    kw['role'] = role
+    kw['env'] = environment
+    kw['job'] = job
     super(AuroraProxySource, self).__init__(serverset_path, zk_servers, **kw)
 
 

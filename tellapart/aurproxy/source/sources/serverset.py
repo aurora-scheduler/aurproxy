@@ -42,7 +42,8 @@ class ServerSetSource(ProxySource):
                endpoint=None,
                signal_update_fn=None,
                share_adjuster_factories=None,
-               zk_member_prefix=None):
+               zk_member_prefix=None,
+               **kw):
     super(ServerSetSource, self).__init__(signal_update_fn,
                                           share_adjuster_factories)
     self._zk_path = path
@@ -50,6 +51,7 @@ class ServerSetSource(ProxySource):
     self._endpoint = endpoint
     self._server_set = []
     self._zk_member_prefix = zk_member_prefix
+    self._kw = kw
 
   @property
   def blueprint(self):
@@ -79,11 +81,14 @@ class ServerSetSource(ProxySource):
     else:
       ep = service_instance.service_endpoint
     port_map = {}
+    path = None
+    if self._kw.get('role') and self._kw.get('env') and self._kw.get('job'):
+      path = "{0}/{1}/{2}/{3}".format(self._kw.get('role'), self._kw.get('env'), self._kw.get('job'), service_instance.shard)
     for k, v in service_instance.additional_endpoints.items():
       port_map[k] = v.port
     return SourceEndpoint(host=ep.host,
                           port=ep.port,
-                          context={'port_map': port_map})
+                          context={'port_map': port_map, 'path': path})
 
   def _get_kazoo_client(self):
     kc = KazooClient(
