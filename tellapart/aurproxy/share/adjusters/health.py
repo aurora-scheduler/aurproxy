@@ -69,8 +69,8 @@ UNHEALTHY_RESULTS = [ HealthCheckResult.ERROR_CODE,
 
 SUPPORTED_HEALTHCHECK_METHODS = ('GET', 'HEAD')
 
-HEALTHY = Counter('healthy', 'Total healthy (count)', ['endpoint', 'path', 'status_code'])
-UNHEALTHY = Counter('unhealthy', 'Total unhealthy (count)', ['endpoint', 'path', 'type', 'status_code'])
+HEALTHY = Counter('healthy', 'Total healthy (count)', ['endpoint', 'source', 'status_code'])
+UNHEALTHY = Counter('unhealthy', 'Total unhealthy (count)', ['endpoint', 'source', 'type', 'status_code'])
 
 
 class HealthCheckStatus(object):
@@ -194,12 +194,12 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
 
       if r.status_code == requests.codes.ok:
-        HEALTHY.labels(endpoint=check_uri, path=path, status_code=r.status_code).inc()
+        HEALTHY.labels(endpoint=check_uri, source=path, status_code=r.status_code).inc()
         check_result = HealthCheckResult.SUCCESS
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug)
       else:
-        UNHEALTHY.labels(endpoint=check_uri, path=path, type=r.status_code, status_code=r.status_code).inc()
+        UNHEALTHY.labels(endpoint=check_uri, source=path, type=r.status_code, status_code=r.status_code).inc()
         check_result = HealthCheckResult.ERROR_CODE
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
@@ -207,7 +207,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
 
     except requests.exceptions.Timeout as ex:
       check_result = HealthCheckResult.TIMEOUT
-      UNHEALTHY.labels(endpoint=check_uri, path=path, type=ex.message, status_code=502).inc()
+      UNHEALTHY.labels(endpoint=check_uri, source=path, type=ex.message, status_code=502).inc()
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                    HttpHealthCheckLogResult.TIMEOUT,
                    log_fn=logger.error)
@@ -221,11 +221,11 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       else:
         check_result = HealthCheckResult.UNKNOWN_ERROR
         error_log_fn = logger.exception
-      UNHEALTHY.labels(endpoint=check_uri, path=path, type=ex.message, status_code=502).inc()
+      UNHEALTHY.labels(endpoint=check_uri, source=path, type=ex.message, status_code=502).inc()
     except Exception as ex:
       check_result = HealthCheckResult.UNKNOWN_ERROR
       error_log_fn = logger.exception
-      UNHEALTHY.labels(endpoint=check_uri, path=path, type=ex.message, status_code=502).inc()
+      UNHEALTHY.labels(endpoint=check_uri, source=path, type=ex.message, status_code=502).inc()
 
     if error_log_fn:
       self._record(event=HttpHealthCheckLogEvent.RUNNING_CHECK,
