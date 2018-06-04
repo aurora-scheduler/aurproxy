@@ -185,7 +185,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       return
 
     check_uri = self._build_check_uri()
-    path = self._endpoint.context['path'] or ''
+    path = self._endpoint.context.get('path') or ''
     error_log_fn = None
     try:
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
