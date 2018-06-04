@@ -17,6 +17,8 @@
 
 __copyright__ = 'Copyright (C) 2015 TellApart, Inc. All Rights Reserved.'
 
+import os
+import socket
 from flask import (
   Blueprint,
   Response)
@@ -29,6 +31,10 @@ from tellapart.aurproxy.metrics.store import root_metric_store
 # Define a standard blueprint for lifecycle management endpoints
 lifecycle_blueprint = Blueprint('lifecycle', __name__)
 _bp = flask_restful.Api(lifecycle_blueprint)
+
+hostname = socket.getfqdn()
+environ = os.environ.get('ENVIRON', 'beta')
+domain = os.environ.get('DOMAIN', 'localhost')
 
 @_bp.resource('/quitquitquit')
 class QuitQuitQuit(flask_restful.Resource):
@@ -58,18 +64,21 @@ class Metrics(flask_restful.Resource):
     '''Returns the metrics from the registry in latest text format as a string.'''
     output = []
     for metric in REGISTRY.collect():
-        output.append('# HELP {0} {1}'.format(
-            metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
-        output.append('\n# TYPE {0} {1}\n'.format(metric.name, metric.type))
-        for name, labels, value in metric.samples:
-            if labels:
-                labelstr = '{{{0}}}'.format(','.join(
-                    ['{0}="{1}"'.format(
-                     k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
-                     for k, v in sorted(labels.items())]))
-            else:
-                labelstr = ''
-            output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
+      output.append('# HELP {0} {1}'.format(
+        metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
+      output.append('\n# TYPE {0} {1}\n'.format(metric.name, metric.type))
+      for name, labels, value in metric.samples:
+        if labels:
+          labels['host'] = hostname
+          labels['env'] = environ
+          labels['domain'] = domain
+          labelstr = '{{{0}}}'.format(','.join(
+            ['{0}="{1}"'.format(k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
+              for k, v in sorted(labels.items())]
+          ))
+        else:
+          labelstr = ''
+        output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
     return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
 @_bp.resource('/metrics.json')
