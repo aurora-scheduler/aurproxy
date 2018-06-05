@@ -71,7 +71,8 @@ SUPPORTED_HEALTHCHECK_METHODS = ('GET', 'HEAD')
 
 HEALTHY = Counter('healthy', 'Total healthy (count)', ['endpoint', 'source', 'status_code'])
 UNHEALTHY = Counter('unhealthy', 'Total unhealthy (count)', ['endpoint', 'source', 'type', 'status_code'])
-
+UPDATED_HEALTH_STATUS = Counter('updated_health_status', 'Total updated_health_status (count)')
+RUNNING_CALLBACK = Counter('running_callback', 'Total running_callback (count)', ['type'])
 
 class HealthCheckStatus(object):
   """
@@ -185,7 +186,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       return
 
     check_uri = self._build_check_uri()
-    path = self._endpoint.context.get('path') or ''
+    source = self._endpoint.context.get('source') or ''
     error_log_fn = None
     try:
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
@@ -194,20 +195,20 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
 
       if r.status_code == requests.codes.ok:
-        HEALTHY.labels(endpoint=check_uri, source=path, status_code=r.status_code).inc()
+        HEALTHY.labels(endpoint=check_uri, source=source, status_code=r.status_code).inc()
         check_result = HealthCheckResult.SUCCESS
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug)
       else:
-        UNHEALTHY.labels(endpoint=check_uri, source=path, type=r.status_code, status_code=r.status_code).inc()
         check_result = HealthCheckResult.ERROR_CODE
+        UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=r.status_code).inc()
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
                      'status_code:{0}'.format(r.status_code))
 
     except requests.exceptions.Timeout as ex:
       check_result = HealthCheckResult.TIMEOUT
-      UNHEALTHY.labels(endpoint=check_uri, source=path, type=ex.message, status_code=502).inc()
+      UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=502).inc()
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                    HttpHealthCheckLogResult.TIMEOUT,
                    log_fn=logger.error)
@@ -221,11 +222,11 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       else:
         check_result = HealthCheckResult.UNKNOWN_ERROR
         error_log_fn = logger.exception
-      UNHEALTHY.labels(endpoint=check_uri, source=path, type=ex.message, status_code=502).inc()
+      UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=502).inc()
     except Exception as ex:
       check_result = HealthCheckResult.UNKNOWN_ERROR
       error_log_fn = logger.exception
-      UNHEALTHY.labels(endpoint=check_uri, source=path, type=ex.message, status_code=502).inc()
+      UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=502).inc()
 
     if error_log_fn:
       self._record(event=HttpHealthCheckLogEvent.RUNNING_CHECK,
@@ -281,6 +282,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
     if self._status != calculated_status:
       old_status = self._status
       self._status = calculated_status
+      UPDATED_HEALTH_STATUS.inc()
       self._record(HttpHealthCheckLogEvent.UPDATED_HEALTH_STATUS,
                    HttpHealthCheckLogResult.SUCCESS,
                    '{0} -> {1}'.format(old_status, calculated_status))
@@ -288,8 +290,9 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
         try:
           # Execute callback, passing old and new status
           self._signal_update_fn()
-        except Exception:
+        except Exception as ex:
           logger.exception('Exception when executing callback on '
                            'BasicHttpHealthCheck status change.')
+          RUNNING_CALLBACK.labels(type=ex.message).inc()
           self._record(HttpHealthCheckLogEvent.RUNNING_CALLBACK,
                        HttpHealthCheckLogResult.ERROR)

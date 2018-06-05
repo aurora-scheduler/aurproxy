@@ -78,15 +78,20 @@ class StaticListProxySource(ProxySource):
     server_list = kwargs.get('server_list')
     logger.info('ServerList: {0}'.format(server_list))
     err_fmt = '"{0}" required on StaticListProxySource'
-    for server_info in server_list:
+    for idx, server_info in enumerate(server_list):
       _host = server_info.get('host')
       _port = server_info.get('port')
       _share = server_info.get('share') if server_info.get('share') else 1.0
+      _context = {'source': "{0}.{1}.{2}.{3}.{4}".format(kwargs.get('cluster'),
+                                                         kwargs.get('role'),
+                                                         kwargs.get('environment'),
+                                                         kwargs.get('job'),
+                                                         idx)}
       if not _host:
         raise AurProxyConfigException(err_fmt.format('host'))
       if not _port:
         raise AurProxyConfigException(err_fmt.format('port'))
-      self._server_set.append(ShareEndpoint(_host, _port, _share, 1.0))
+      self._server_set.append(ShareEndpoint(_host, _port, _share, 1.0, _context))
     if self._server_set.count == 0:
       raise AurProxyConfigException(err_fmt.format('server_list'))
 

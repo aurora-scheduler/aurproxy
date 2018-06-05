@@ -61,6 +61,9 @@ class ShareEndpoint(AuditableEndpointBase):
     return self._share
 
 class SourceEndpoint(EndpointBase):
+  def __init__(self, host, port, context=None):
+    super(SourceEndpoint, self).__init__(host, port, context)
+
   def __unicode__(self):
     return '{0}:{1}'.format(self._host, self.port)
 

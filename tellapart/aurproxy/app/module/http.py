@@ -33,8 +33,8 @@ lifecycle_blueprint = Blueprint('lifecycle', __name__)
 _bp = flask_restful.Api(lifecycle_blueprint)
 
 hostname = socket.getfqdn()
-environ = os.environ.get('ENVIRON', 'beta')
-domain = os.environ.get('DOMAIN', 'localhost')
+environ = os.environ.get('AURPROXY_ENVIRON', 'devel')
+domain = os.environ.get('AURPROXY_DOMAIN', 'localhost')
 
 @_bp.resource('/quitquitquit')
 class QuitQuitQuit(flask_restful.Resource):

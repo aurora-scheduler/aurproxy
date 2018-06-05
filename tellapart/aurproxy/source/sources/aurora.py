@@ -42,6 +42,7 @@ class AuroraProxySource(ServerSetSource):
         get_job_path(role, environment, job),
         announcer_serverset_path
     )
+    kw['cluster'] = kw.get('cluster', '')
     kw['role'] = role
     kw['env'] = environment
     kw['job'] = job
@@ -54,5 +55,8 @@ class AuroraMasterProxySource(ServerSetSource):
                zk_servers,
                aurora_master_path=_DEFAULT_AURORA_SCHEDULER_PATH,
                **kw):
-
+    kw['cluster'] = kw.get('cluster', '')
+    kw['role'] = kw.get('role', '')
+    kw['env'] = kw.get('environment', '')
+    kw['job'] = kw.get('job', '')
     super(AuroraMasterProxySource, self).__init__(aurora_master_path, zk_servers, **kw)
