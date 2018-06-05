@@ -68,16 +68,13 @@ class Metrics(flask_restful.Resource):
         metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
       output.append('\n# TYPE {0} {1}\n'.format(metric.name, metric.type))
       for name, labels, value in metric.samples:
-        if labels:
-          labels['host'] = hostname
-          labels['env'] = environ
-          labels['domain'] = domain
-          labelstr = '{{{0}}}'.format(','.join(
-            ['{0}="{1}"'.format(k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
-              for k, v in sorted(labels.items())]
-          ))
-        else:
-          labelstr = ''
+        labels['host'] = hostname
+        labels['env'] = environ
+        labels['domain'] = domain
+        labelstr = '{{{0}}}'.format(','.join(
+          ['{0}="{1}"'.format(k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
+            for k, v in sorted(labels.items())]
+        ))
         output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
     return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
