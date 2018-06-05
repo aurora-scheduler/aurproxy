@@ -20,8 +20,18 @@ from tellapart.aurproxy.metrics.store import (
   update_gauge,
 )
 from tellapart.aurproxy.util import get_logger
+from prometheus_client import Counter, Gauge
 
 logger = get_logger(__name__)
+
+ACTIVE_CONNECTIONS = Gauge('nginx_active_connections', 'Total nginx_active_connections (gauge)')
+TOTAL_ACCEPTS = Gauge('nginx_total_accepts', 'Total nginx_total_accepts (count)')
+TOTAL_HANDLED = Gauge('nginx_total_handled', 'Total nginx_total_handled (count)')
+TOTAL_REQUESTS = Gauge('nginx_total_requests', 'Total nginx_total_requests (count)')
+READING = Gauge('nginx_reading', 'Total nginx_reading (gauge)')
+WRITING = Gauge('nginx_writing', 'Total nginx_writing (gauge)')
+WAITING = Gauge('nginx_waiting', 'Total nginx_waiting (gauge)')
+
 
 class NginxProxyMetricsPublisher(object):
   """Class that polls the proxy for operational metrics and publishes them.
@@ -62,24 +72,25 @@ class NginxProxyMetricsPublisher(object):
       # Number of current active connections on the server.
       active = int(self._ACTIVE_CONNECTIONS_RE.match(lines[0]).group('conn'))
       update_gauge(self._get_metric_name('active_connections'), active)
+      ACTIVE_CONNECTIONS.set(active)
 
       # Total accepts/handled/requests seen since the server started.
       server = self._SERVER_TOTALS_RE.match(lines[2])
-      update_counter(
-          self._get_metric_name('total_accepts'), int(server.group('acc')))
-      update_counter(
-          self._get_metric_name('total_handled'), int(server.group('hand')))
-      update_counter(
-          self._get_metric_name('total_requests'), int(server.group('req')))
+      update_counter(self._get_metric_name('total_accepts'), int(server.group('acc')))
+      update_counter(self._get_metric_name('total_handled'), int(server.group('hand')))
+      update_counter(self._get_metric_name('total_requests'), int(server.group('req')))
+      TOTAL_ACCEPTS.set(int(server.group('acc')))
+      TOTAL_HANDLED.set(int(server.group('hand')))
+      TOTAL_REQUESTS.set(int(server.group('req')))
 
       # Current number of Reading/Writing/Waiting.
       status = self._SERVER_STATUS_RE.match(lines[3])
-      update_gauge(
-          self._get_metric_name('reading'), int(status.group('read')))
-      update_gauge(
-          self._get_metric_name('writing'), int(status.group('write')))
-      update_gauge(
-          self._get_metric_name('waiting'), int(status.group('wait')))
+      update_gauge(self._get_metric_name('reading'), int(status.group('read')))
+      update_gauge(self._get_metric_name('writing'), int(status.group('write')))
+      update_gauge(self._get_metric_name('waiting'), int(status.group('wait')))
+      READING.set(int(status.group('read')))
+      WRITING.set(int(status.group('write')))
+      WAITING.set(int(status.group('wait')))
     except Exception:
       logger.exception('Failed to fetch proxy metrics for %s.', url)
 
