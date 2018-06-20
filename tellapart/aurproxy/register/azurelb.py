@@ -200,7 +200,7 @@ class AzureLbSelfRegisterer(BaseAzureLbRegisterer):
         self.record(lb.name, 
                     instance_id, 
                     RegistrationAction.REMOVE)
-        self.add_vm_to_load_balancer(lb, vm)
+        self.remove_vm_from_load_balancer(lb, vm)  
       else:
         self.record(lb.name,
                     instance_id,
