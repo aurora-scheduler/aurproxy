@@ -190,7 +190,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
     error_log_fn = None
     try:
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
-                   HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug)
+                   HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
 
       r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
 
@@ -198,20 +198,22 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
         HEALTHY.labels(endpoint=check_uri, source=source, status_code=r.status_code).inc()
         check_result = HealthCheckResult.SUCCESS
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                     HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug)
+                     HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
       else:
         check_result = HealthCheckResult.ERROR_CODE
         UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=r.status_code).inc()
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
-                     'status_code:{0}'.format(r.status_code))
+                     'status_code:{0}'.format(r.status_code),
+                     source=source)
 
     except requests.exceptions.Timeout as ex:
       check_result = HealthCheckResult.TIMEOUT
       UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=502).inc()
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                    HttpHealthCheckLogResult.TIMEOUT,
-                   log_fn=logger.error)
+                   log_fn=logger.error,
+                   source=source)
     except requests.exceptions.ConnectionError as ex:
       if 'gaierror' in unicode(ex):
         check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
@@ -232,12 +234,12 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       self._record(event=HttpHealthCheckLogEvent.RUNNING_CHECK,
                    result=check_result,
                    msg='Exception when executing HttpHealthCheck.',
-                   log_fn=error_log_fn)
+                   log_fn=error_log_fn, source=source)
 
-    self._update_status(check_result)
+    self._update_status(check_result, source)
     spawn_later(self._interval, self._check)
 
-  def _record(self, event, result, msg='', log_fn=logger.info):
+  def _record(self, event, result, msg='', log_fn=logger.info, source=''):
     """
     Utility to record HttpHealthCheck events and results.
 
@@ -247,14 +249,15 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       msg - str - Extra message.
       log_fn - function - logger function to use.
     """
-    f = 'event:%(event)s result:%(result)s check_uri:%(check_uri)s msg:%(msg)s'
+    f = 'event:%(event)s result:%(result)s source:%(source)s check_uri:%(check_uri)s msg:%(msg)s'
     context = { 'event': event,
                 'result': result,
+                'source': source,
                 'check_uri': self._build_check_uri(),
                 'msg': msg }
     log_fn(f, context)
 
-  def _update_status(self, check_result):
+  def _update_status(self, check_result, source):
     """
     If necessary based on configuration, update status of this check.
 
@@ -285,7 +288,8 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       UPDATED_HEALTH_STATUS.inc()
       self._record(HttpHealthCheckLogEvent.UPDATED_HEALTH_STATUS,
                    HttpHealthCheckLogResult.SUCCESS,
-                   '{0} -> {1}'.format(old_status, calculated_status))
+                   '{0} -> {1}'.format(old_status, calculated_status),
+                   source=source)
       if self._signal_update_fn:
         try:
           # Execute callback, passing old and new status
@@ -295,4 +299,5 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
                            'BasicHttpHealthCheck status change.')
           RUNNING_CALLBACK.labels(type=ex.message).inc()
           self._record(HttpHealthCheckLogEvent.RUNNING_CALLBACK,
-                       HttpHealthCheckLogResult.ERROR)
+                       HttpHealthCheckLogResult.ERROR,
+                       source=source)
