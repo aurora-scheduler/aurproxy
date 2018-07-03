@@ -61,7 +61,8 @@ class BaseRegisterer(object):
       msg - str - Extra message to include.
       log_fn - Logger method to use.
     """
-    if isinstance(reasons, basestring):
+    # Joe A: changed basestring to str
+    if isinstance(reasons, str):
       reasons = [reasons]
 
     reasons = ','.join(reasons) if reasons else ''
