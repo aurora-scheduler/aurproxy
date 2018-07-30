@@ -236,6 +236,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
                    msg='Exception when executing HttpHealthCheck.',
                    log_fn=error_log_fn, source=source)
 
+    del r
     self._update_status(check_result, source)
     spawn_later(self._interval, self._check)
 
