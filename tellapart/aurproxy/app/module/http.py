@@ -24,7 +24,7 @@ from flask import (
   Response)
 import flask_restful
 from prometheus_client import REGISTRY, core
-from pympler import tracker
+# from pympler import tracker
 
 from tellapart.aurproxy.app import lifecycle
 from tellapart.aurproxy.metrics.store import root_metric_store
@@ -77,7 +77,7 @@ class Metrics(flask_restful.Resource):
             for k, v in sorted(labels.items())]
         ))
         output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
-    tracker.SummaryTracker().print_diff()
+    # tracker.SummaryTracker().print_diff()
     return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
 @_bp.resource('/metrics.json')
