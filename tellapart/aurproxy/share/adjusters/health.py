@@ -24,7 +24,6 @@ from tellapart.aurproxy.util import get_logger
 
 from prometheus_client import Counter
 
-
 logger = get_logger(__name__)
 
 class HttpHealthCheckLogEvent(object):
@@ -206,6 +205,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
                      HttpHealthCheckLogResult.FAILURE,
                      'status_code:{0}'.format(r.status_code),
                      source=source)
+      del r
 
     except requests.exceptions.Timeout as ex:
       check_result = HealthCheckResult.TIMEOUT
@@ -236,7 +236,6 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
                    msg='Exception when executing HttpHealthCheck.',
                    log_fn=error_log_fn, source=source)
 
-    del r
     self._update_status(check_result, source)
     spawn_later(self._interval, self._check)
 
