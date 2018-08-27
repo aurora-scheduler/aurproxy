@@ -17,7 +17,7 @@
 
 __copyright__ = 'Copyright (C) 2015 TellApart, Inc. All Rights Reserved.'
 
-from tellapart.aurproxy.register.azure import AzureRegisterer
+from tellapart.aurproxy.register.azuretools import AzureRegisterer
 from tellapart.aurproxy.register.base import (
     RegistrationAction,
     RegistrationActionReason

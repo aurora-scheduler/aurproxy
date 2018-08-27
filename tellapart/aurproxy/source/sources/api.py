@@ -23,7 +23,7 @@ import dateutil.parser
 from flask import (
   Blueprint,
   request)
-from flask.ext.restful import (
+from flask_restful import (
   abort,
   Api,
   Resource)
