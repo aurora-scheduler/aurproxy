@@ -8,13 +8,19 @@ MAINTAINER thanos@tellapart.com
 # System prerequisite installation
 ######
 
+
 # Update apt repository
 # Install python prerequisites
 # Install libpcap
 # Aurora/Mesos requirements (see AURORA-1487)
+ENV AZ_REPO jessie
 ENV DEV_PKGS build-essential curl libpcre3-dev zlib1g-dev libssl-dev libxml2-dev libgeoip-dev
 RUN apt-get update \
- && apt-get install -y python-pip python-dev build-essential libpcap-dev libcurl4-nss-dev libapr1-dev libsvn-dev openssl libssl1.0.0 libssl-dev libxml2 libxml2-dev libxslt1.1 libgeoip1 libgeoip-dev libpcre3 libpcre3-dev zlib1g zlib1g-dev \
+ && apt-get install -y apt-transport-https $DEV_PKGS python-pip python-dev libpcap-dev libcurl4-nss-dev libapr1-dev \
+      libsvn-dev openssl libssl1.0.0 libxml2 libxslt1.1 libgeoip1 libpcre3 zlib1g \
+ && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | tee /etc/apt/sources.list.d/azure-cli.list \
+ && curl -L https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+ && apt-get update && apt-get install -y azure-cli \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
