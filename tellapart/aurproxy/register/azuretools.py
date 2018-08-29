@@ -171,7 +171,7 @@ class AzureRegisterer(BaseRegisterer):
     session = requests.Session()
     session.trust_env = False  # Ignore http_proxy setting for this
     session.headers.update({'Metadata': 'true'}) # required by Azure metadata service
-    return session.get(url, timeout=2).content
+    return session.get(url.format(identifier), timeout=2).content
 
   def _extract_path_info_from_id(self, id):
     """Given a common Azure object id, extracts the subscription_id and resource_group.
