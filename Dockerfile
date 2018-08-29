@@ -8,14 +8,21 @@ MAINTAINER thanos@tellapart.com
 # System prerequisite installation
 ######
 
+
 # Update apt repository
-RUN apt-get update
-
 # Install python prerequisites
-RUN apt-get install -y python-pip python-dev build-essential
-
 # Install libpcap
-RUN apt-get install -y libpcap-dev
+# Aurora/Mesos requirements (see AURORA-1487)
+ENV AZ_REPO jessie
+ENV DEV_PKGS build-essential curl libpcre3-dev zlib1g-dev libssl-dev libxml2-dev libgeoip-dev
+RUN apt-get update \
+ && apt-get install -y apt-transport-https $DEV_PKGS python-pip python-dev libpcap-dev libcurl4-nss-dev libapr1-dev \
+      libsvn-dev openssl libssl1.0.0 libxml2 libxslt1.1 libgeoip1 libpcre3 zlib1g \
+ && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | tee /etc/apt/sources.list.d/azure-cli.list \
+ && curl -L https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+ && apt-get update && apt-get install -y azure-cli \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Install go
 RUN echo 'e40c36ae71756198478624ed1bb4ce17597b3c19d243f3f0899bb5740d56212a go1.6.2.linux-amd64.tar.gz' >go.sha256sum \
@@ -31,28 +38,16 @@ RUN mkdir -p $GOPATH \
  && cd $GOPATH/src/github.com/buger/gor \
  && go build
 
-# Aurora/Mesos requirements (see AURORA-1487)
-RUN apt-get update \
- && apt-get install -y libcurl4-nss-dev libapr1-dev libsvn-dev
 
 # Install nginx
-ENV NGX_REQS openssl libssl1.0.0 libxml2 libxslt1.1 libgeoip1 libpcre3 zlib1g
-RUN apt-get update \
- && apt-get install -y $NGX_REQS \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
-
 ENV NGX_DEV_KIT_VER 0.2.19
 ENV NGX_VER 1.9.0
 ENV NGX_MD5 487c26cf0470d8869c41a73621847268
 ENV NGX_STATSD_VER b756a12abf110b9e36399ab7ede346d4bb86d691
 ENV NGX_HEADERS_MORE_VER 0.26
 ENV NGX_ECHO_VER 0.57
-ENV DEV_PKGS build-essential curl libpcre3-dev zlib1g-dev libssl-dev libxml2-dev libgeoip-dev
 
-RUN apt-get update \
- && apt-get install -y $DEV_PKGS \
- && mkdir -p /tmp/build && cd /tmp/build \
+RUN mkdir -p /tmp/build && cd /tmp/build \
  && curl -s -L -o ngx_devel.tar.gz \
       https://github.com/simpl/ngx_devel_kit/archive/v$NGX_DEV_KIT_VER.tar.gz \
  && curl -s -L -o ngx.tar.gz \
@@ -143,7 +138,7 @@ RUN mkdir -p /opt/aurproxy/
 ADD ./requirements.txt /opt/aurproxy/requirements.txt
 
 #  Install application requirements
-RUN pip install -r /opt/aurproxy/requirements.txt
+RUN pip install --upgrade pip && pip install -r /opt/aurproxy/requirements.txt
 
 
 ######

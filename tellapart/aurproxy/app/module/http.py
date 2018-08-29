@@ -20,7 +20,7 @@ __copyright__ = 'Copyright (C) 2015 TellApart, Inc. All Rights Reserved.'
 from flask import (
   Blueprint,
   Response)
-from flask.ext import restful
+import flask_restful as restful
 
 from tellapart.aurproxy.app import lifecycle
 from tellapart.aurproxy.metrics.store import root_metric_store

@@ -17,7 +17,7 @@
 
 __copyright__ = 'Copyright (C) 2015 TellApart, Inc. All Rights Reserved.'
 
-from tellapart.aurproxy.register.azure import AzureRegisterer
+from tellapart.aurproxy.register.azuretools import AzureRegisterer
 from tellapart.aurproxy.register.base import (
     RegistrationAction,
     RegistrationActionReason
@@ -26,6 +26,7 @@ from tellapart.aurproxy.util import get_logger
 
 logger = get_logger(__name__)
 
+class AzureException(BaseException): pass
 
 class BaseAzureLbRegisterer(AzureRegisterer):
   def __init__(self, lb_names, region, subscription_id, tenant_id, client_id=None, client_secret=None):
@@ -90,12 +91,15 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     """
     # cannot add VM if load balancer doesn't exist or has no backend pools
     if not lb or not lb.backend_address_pools or len(lb.backend_address_pools) == 0:
+        logger.warn('no lb backend pools to register with!')
         return False
     if not vm:
+        logger.warn('no vm to register!')
         return False
     bp = self._find_backend_pool(lb, None)
     match = self._match_ip_config(vm)
     if not match or not bp:
+        logger.warn('failed to find nic without pooling ip config for this vm!')
         return False
     match['ip_config'].load_balancer_backend_address_pools = [bp]
     nic = match['network_interface']
@@ -127,7 +131,7 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     """
     for ip in nic.ip_configurations:
       # if ip.load_balancer_backend_address_pools:
-      for bp in ip.load_balancer_backend_address_pools:
+      for bp in (ip.load_balancer_backend_address_pools or []):
         for lbp in lb.backend_address_pools:
           if (lbp.id == bp.id):
             return {'backend_pool': bp, 'ip_config': ip}
@@ -140,7 +144,7 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     if not lb or not lb.backend_address_pools or len(lb.backend_address_pools) == 0:
       return None
     bp_list = [b for b in lb.backend_address_pools if b.name == bp_name]
-    if len(bp_list) > 0: 
+    if len(bp_list) > 0:
       return bp_list[0]
     else:
       return lb.backend_address_pools[0]
@@ -152,9 +156,7 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     for nf in vm.network_profile.network_interfaces:
       nic = self.get_network_interface(nf.id)
       if nic.primary:
-        for ip in nic.ip_configurations:
-          if not ip.load_balancer_backend_address_pools or len(ip.load_balancer_backend_address_pools) == 0:
-            return {'network_interface': nic, 'ip_config': ip}
+        return {'network_interface': nic, 'ip_config': next(iter(nic.ip_configurations))}
     return None
 
 
@@ -174,12 +176,14 @@ class AzureLbSelfRegisterer(BaseAzureLbRegisterer):
       # Note: This only finds the VM in one of the balancer's backend pools
       match = self.match_load_balancer_and_vm(lb, vm)
       if not match:
-        # if instance_id not in self._get_elb_instance_ids(elb):
         self.record(lb.name,
                     instance_id,
                     RegistrationAction.REGISTER,
                     [RegistrationActionReason.NOT_YET_REGISTERED])
-        self.add_vm_to_load_balancer(lb, vm)
+        if not self.add_vm_to_load_balancer(lb, vm):
+            raise AzureException("failed to register vm {} with lb {}".format(vm, lb))
+        else:
+            logger.info("registered vm {} with lb {}".format(vm, lb))
       else:
         self.record(lb.name,
                     instance_id,
