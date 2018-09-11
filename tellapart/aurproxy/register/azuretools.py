@@ -142,20 +142,6 @@ class AzureRegisterer(BaseRegisterer):
 
     return True
 
-  def get_load_balancer(self, lb_name):
-    """
-      Gets the specific load balancer by name.
-
-    Returns:
-      The LoadBalancer object (as azure.mgmt.network.v2018_02_01.models.LoadBalancer )
-    """
-    client = self.conn.network
-    lb_paged = client.load_balancers.list_all()
-    # iterate all paged items into a single list
-    lb_list = [lb for lb in lb_paged if lb.name == lb_name]
-    if len(lb_list) == 0: return None
-    return lb_list[0]
-
   def _get_instance_metadata(self, identifier):
     """Gets a specific piece of instance metadata for the current Azure instance.
 
