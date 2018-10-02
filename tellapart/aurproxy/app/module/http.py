@@ -65,9 +65,8 @@ class Metrics(flask_restful.Resource):
     '''Returns the metrics from the registry in latest text format as a string.'''
     output = []
     for metric in REGISTRY.collect():
-      output.append('# HELP {0} {1}'.format(
-        metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
-      output.append('\n# TYPE {0} {1}\n'.format(metric.name, metric.type))
+      output.append('# HELP {0} {1}\n'.format(metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
+      output.append('# TYPE {0} {1}\n'.format(metric.name, metric.type))
       for name, labels, value in metric.samples:
         labels['host'] = hostname
         labels['env'] = environ
@@ -76,7 +75,8 @@ class Metrics(flask_restful.Resource):
           ['{0}="{1}"'.format(k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
             for k, v in sorted(labels.items())]
         ))
-        output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
+        if value != 0:
+          output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
     # tracker.SummaryTracker().print_diff()
     return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
