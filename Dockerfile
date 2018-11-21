@@ -1,7 +1,7 @@
 # Newer python base images may break gevent.
 # See https://github.com/docker-library/python/issues/29#issuecomment-70727289
-FROM python:2.7.7
-MAINTAINER thanos@tellapart.com
+FROM ubuntu:xenial
+MAINTAINER colin@amperity.com
 
 
 ######
@@ -13,10 +13,10 @@ MAINTAINER thanos@tellapart.com
 # Install python prerequisites
 # Install libpcap
 # Aurora/Mesos requirements (see AURORA-1487)
-ENV AZ_REPO jessie
+ENV AZ_REPO xenial
 ENV DEV_PKGS build-essential curl libpcre3-dev zlib1g-dev libssl-dev libxml2-dev libgeoip-dev
 RUN apt-get update \
- && apt-get install -y apt-transport-https $DEV_PKGS python-pip python-dev libpcap-dev libcurl4-nss-dev libapr1-dev \
+ && apt-get install -y git python2.7 apt-transport-https $DEV_PKGS python-pip python-dev libpcap-dev libcurl4-nss-dev libapr1-dev gcc \
       libsvn-dev openssl libssl1.0.0 libxml2 libxslt1.1 libgeoip1 libpcre3 zlib1g \
  && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" | tee /etc/apt/sources.list.d/azure-cli.list \
  && curl -L https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
@@ -138,8 +138,7 @@ RUN mkdir -p /opt/aurproxy/
 ADD ./requirements.txt /opt/aurproxy/requirements.txt
 
 #  Install application requirements
-RUN pip install --upgrade pip && pip install -r /opt/aurproxy/requirements.txt
-
+RUN pip2 install --upgrade pip && pip2 install -r /opt/aurproxy/requirements.txt
 
 ######
 # Application setup
