@@ -19,10 +19,12 @@ http {
     sendfile on;
     tcp_nopush on;
 
+    server_names_hash_bucket_size 128;
+
     keepalive_timeout {{ context.keepalive_timeout or 65 }};
     keepalive_requests 100000;
     reset_timedout_connection on;
-    client_body_timeout 10;
+    client_body_timeout {{ context.client_body_timeout or 10 }};
     client_max_body_size {{ context.client_max_body_size or "1M" }};
     send_timeout 2;
     tcp_nodelay on;
