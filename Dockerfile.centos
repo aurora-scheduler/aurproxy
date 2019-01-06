@@ -1,0 +1,150 @@
+# Newer python base images may break gevent.
+# See https://github.com/docker-library/python/issues/29#issuecomment-70727289
+FROM centos:latest
+MAINTAINER techops-team@wisertogether.com
+
+
+######
+# System prerequisite installation
+######
+
+# Update apt repository
+ENV http_proxy=http://proxy-aws.internal.wisertogether.com:8118
+ENV HTTP_PROXY=http://proxy-aws.internal.wisertogether.com:8118
+RUN yum update -y
+
+# Install python prerequisites
+RUN yum group install "Development tools" -y
+RUN yum install -y python-devel
+RUN curl -x $HTTP_PROXY "https://bootstrap.pypa.io/get-pip.py" -o "/tmp/get-pip.py"
+RUN python /tmp/get-pip.py --proxy $HTTP_PROXY
+
+# Install go
+RUN yum install -y golang git libpcap-devel
+
+# Install gor
+ENV GOPATH=/opt/go
+RUN mkdir -p $GOPATH \
+ && git config --global http.proxy $HTTP_PROXY \
+ && go get -v github.com/buger/gor \
+ && git config --global --unset http.proxy \
+ && cd $GOPATH/src/github.com/buger/gor \
+ && go build
+
+# Install nginx
+ENV NGX_REQS openssl openssl-libs libxml2 libxslt GeoIP pcre zlib
+RUN yum update -y \
+ && yum install -y $NGX_REQS
+
+ENV NGX_DEV_KIT_VER 0.3.0
+ENV NGX_VER 1.10.1
+ENV NGX_MD5 088292d9caf6059ef328aa7dda332e44
+ENV NGX_STATSD_VER 07dcefdab2838b5aa68f1233a44fedcda8052b7f
+ENV NGX_HEADERS_MORE_VER 0.30
+ENV NGX_ECHO_VER 0.59
+ENV DEV_PKGS curl pcre-devel zlib-devel openssl-devel libxml2-devel GeoIP-devel
+
+RUN yum update -y \
+ && yum install -y $DEV_PKGS \
+ && mkdir -p /tmp/build && cd /tmp/build \
+ && curl -v -s -L -x $HTTP_PROXY -o ngx_devel.tar.gz \
+      https://github.com/simpl/ngx_devel_kit/archive/v$NGX_DEV_KIT_VER.tar.gz \
+ && curl -v -s -L -x $HTTP_PROXY -o ngx.tar.gz \
+      http://nginx.org/download/nginx-$NGX_VER.tar.gz \
+ && curl -v -s -L -x $HTTP_PROXY -o ngx_statsd.tar.gz \
+      https://github.com/zebrafishlabs/nginx-statsd/archive/$NGX_STATSD_VER.tar.gz \
+ && curl -v -s -L -x $HTTP_PROXY -o ngx_headers_more.tar.gz \
+      https://github.com/openresty/headers-more-nginx-module/archive/v$NGX_HEADERS_MORE_VER.tar.gz \
+ && curl -v -s -L -x $HTTP_PROXY -o ngx_echo.tar.gz \
+      https://github.com/openresty/echo-nginx-module/archive/v$NGX_ECHO_VER.tar.gz \
+ && echo "$NGX_MD5 ngx.tar.gz" | md5sum -c - || (echo "MD5 for ngx.tar.gz didn't match expected!" && exit 1) \
+ && tar -xvf ngx_devel.tar.gz \
+ && tar -xvf ngx.tar.gz \
+ && tar -xvf ngx_statsd.tar.gz \
+ && tar -xvf ngx_headers_more.tar.gz \
+ && tar -xvf ngx_echo.tar.gz \
+ && cd /tmp/build/nginx-$NGX_VER \
+ && ./configure --prefix=/usr \
+                --conf-path=/etc/nginx/nginx.conf \
+                --error-log-path=/var/log/nginx/error.log \
+                --http-client-body-temp-path=/var/lib/nginx/body \
+                --http-fastcgi-temp-path=/var/lib/nginx/fastcgi \
+                --http-log-path=/var/log/nginx/access.log \
+                --http-proxy-temp-path=/var/lib/nginx/proxy \
+                --http-scgi-temp-path=/var/lib/nginx/scgi \
+                --http-uwsgi-temp-path=/var/lib/nginx/uwsgi \
+                --lock-path=/var/lock/nginx.lock \
+                --pid-path=/var/run/nginx.pid \
+                --with-debug \
+                --with-http_addition_module \
+                --with-http_dav_module \
+                --with-http_geoip_module \
+                --with-http_gzip_static_module \
+                --with-http_realip_module \
+                --with-http_stub_status_module \
+                --with-http_ssl_module \
+                --with-http_sub_module \
+                --with-stream \
+                --with-ipv6 \
+                --with-sha1=/usr/include/openssl \
+                --with-md5=/usr/include/openssl \
+                --add-module=/tmp/build/nginx-statsd-$NGX_STATSD_VER/ \
+                --add-module=/tmp/build/headers-more-nginx-module-$NGX_HEADERS_MORE_VER \
+                --add-module=/tmp/build/echo-nginx-module-$NGX_ECHO_VER \
+ && make -j4 \
+ && make install \
+ && cd / \
+ && rm -rf /tmp/build \
+ && yum install subversion-devel -y
+
+RUN mkdir -p /etc/nginx/sites-enabled \
+ && mkdir -p /etc/nginx/sites-available \
+ && mkdir -p /var/lib/nginx
+
+######
+# System prerequisite configuration
+######
+
+# Set up run directory for pids
+RUN mkdir -p /var/run
+
+# Remove default nginx config
+RUN rm /etc/nginx/nginx.conf
+
+# Symlink aurproxy nginx config
+RUN mkdir -p /etc/aurproxy/nginx
+RUN ln -sf /etc/aurproxy/nginx/nginx.conf /etc/nginx
+
+# Create dynamic gor config location
+RUN mkdir -p /etc/aurproxy/gor
+
+######
+# Application prerequisite installation
+######
+
+# Set up application sandbox
+# (Gets mounted by aurora in production)
+RUN mkdir -p /mnt/mesos/sandbox/sandbox
+
+# Set up application directory
+RUN mkdir -p /opt/aurproxy/
+
+# Add application requirements
+ADD ./requirements.txt /opt/aurproxy/requirements.txt
+
+#  Install application requirements
+RUN pip install --proxy=$HTTP_PROXY -r /opt/aurproxy/requirements.txt
+
+
+######
+# Application setup
+######
+ADD ./tellapart/__init__.py /opt/aurproxy/tellapart/__init__.py
+ADD ./tellapart/aurproxy /opt/aurproxy/tellapart/aurproxy
+ADD ./templates /opt/aurproxy/tellapart/aurproxy/templates
+
+RUN useradd www-data
+
+# Not intended to be run
+# Command will come from aurproxy.aur
+CMD ["echo done"]

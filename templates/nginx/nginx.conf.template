@@ -28,6 +28,9 @@ http {
     client_max_body_size {{ context.client_max_body_size or "1M" }};
     send_timeout 2;
     tcp_nodelay on;
+    server_names_hash_bucket_size {{context.server_names_hash_bucket_size or 64}};
+    server_names_hash_max_size {{context.server_names_hash_max_size or 512}};
+
 
     log_format combined_forwarded_ip '$remote_addr ($http_x_forwarded_for) - '
                                      '$remote_user [$time_local]  '
@@ -94,19 +97,30 @@ http {
     {%- endfor %}
 
     server {
-        {% for port in server.ports %}listen {{ port }}{{' default_server' if server.context.default_server == 'True' else ''}};
+        {% for port in server.ports %}
+        listen {{ port.port }}{{' ssl ' if port.use_ssl else '' }}{{' default_server' if server.context.default_server == 'True' else ''}};
         {%- endfor %}
 
         server_name {% for host in server.hosts %}{{ host }}{% if not loop.last%} {% endif %}{% endfor %};
+
+        {% if server.use_ssl %}
+        ssl_certificate             {{ server.context.ssl_certificate or '"/etc/nginx/server.crt"' }};
+        ssl_certificate_key         {{ server.context.ssl_certificate_key or '"/etc/nginx/server.key"' }};
+        ssl_session_cache           {{ server.context.ssl_session_cache or 'shared:SSL:1m' }};
+        ssl_session_timeout         {{ server.context.ssl_session_timeout or '10m' }};
+        ssl_ciphers                 {{ server.context.ssl_ciphers or 'HIGH:!aNULL:!MD5' }};
+        ssl_prefer_server_ciphers   {{ server.context.ssl_prefer_server_ciphers or 'on' }};
+        ssl_verify_client           {{ server.context.ssl_verify_client or 'off' }};
+        {% endif %}
 
         proxy_connect_timeout  {{ server.context.proxy_connect_timeout or 60 }};
         proxy_send_timeout     {{ server.context.proxy_send_timeout or 60 }};
         proxy_read_timeout     {{ server.context.proxy_read_timeout or 60 }};
         send_timeout           {{ server.context.send_timeout or 60 }};
 
-        proxy_buffer_size 64k;
-        proxy_buffers 16 16k;
-        large_client_header_buffers 8 32k;
+        proxy_buffer_size               {{ server.context.proxy_buffer_size or '64k' }};
+        proxy_buffers                   {{ server.context.proxy_buffers or '16 16k' }};
+        large_client_header_buffers     {{ server.context.large_client_header_buffers or '8 32k' }};
 
         location /aurproxy_error.html {
             internal;
@@ -132,8 +146,8 @@ http {
         {% for location in route.locations %}
         location {{location}} {
             {% if route.endpoints %}
-            proxy_next_upstream off;
-            proxy_pass http://{{ server.slug }}{{ route.slug }};
+            proxy_next_upstream error timeout;
+            proxy_pass {{ route.protocol }}{{ server.slug }}{{ route.slug }}{{route.route_path}};
             {% else %}
             # No endpoints found for {{ server.slug }}{{ route.slug }}
             access_log on;
@@ -151,7 +165,7 @@ http {
 stream {
    {% for server in stream_servers %}
     server {
-        {% for port in server.ports %}listen {{ port }};
+        {% for port in server.ports %}listen {{ port.port }};
         {%- endfor %}
         proxy_pass {{ server.slug }};
     }
