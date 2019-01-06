@@ -180,7 +180,7 @@ class OpenTSDBMetricPublisher(MetricPublisher):
     """
     self._prefix = prefix
     self._host = host
-    self._port = port
+    self._port = int(port)
 
     super(OpenTSDBMetricPublisher, self).__init__(source, period, flush_engine)
 
