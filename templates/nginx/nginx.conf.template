@@ -57,10 +57,10 @@ http {
 
     {% if stats_port %}
     server {
-        listen {{ proxy_config.stats_port }};
+        listen {{ stats_port }};
         location /aurproxy_error.html {
             internal;
-            echo "Error";
+            return 502 "Error";
         }
         location /aurproxy/status {
             stub_status on;
@@ -77,7 +77,7 @@ http {
         listen {{server.context.overflow_port}} default_server;
         location /aurproxy_error.html {
             internal;
-            echo "Error";
+            return 502 "Error";
         }
         location / {
             access_log on;
@@ -124,7 +124,7 @@ http {
 
         location /aurproxy_error.html {
             internal;
-            echo "Error";
+            return 502 "Error";
         }
 
         {% if server.healthcheck_route %}location {{ server.healthcheck_route }} {
