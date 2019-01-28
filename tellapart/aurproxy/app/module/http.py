@@ -67,16 +67,16 @@ class Metrics(flask_restful.Resource):
     for metric in REGISTRY.collect():
       output.append('# HELP {0} {1}\n'.format(metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
       output.append('# TYPE {0} {1}\n'.format(metric.name, metric.type))
-      for name, labels, value in metric.samples:
-        labels['host'] = hostname
-        labels['env'] = environ
-        labels['domain'] = domain
+      for sample in metric.samples:
+        sample.labels['host'] = hostname
+        sample.labels['env'] = environ
+        sample.labels['domain'] = domain
         labelstr = '{{{0}}}'.format(','.join(
           ['{0}="{1}"'.format(k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
-            for k, v in sorted(labels.items())]
+            for k, v in sorted(sample.labels.items())]
         ))
-        if value != 0:
-          output.append('aurproxy_{0}{1} {2}\n'.format(name, labelstr, core._floatToGoString(value)))
+        if sample.value != 0:
+          output.append('aurproxy_{0}{1} {2}\n'.format(sample.name, labelstr, str(sample.value)))
     # tracker.SummaryTracker().print_diff()
     return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
