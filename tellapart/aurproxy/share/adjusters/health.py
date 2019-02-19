@@ -190,22 +190,22 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
     try:
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
                    HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
-
-      r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
-
-      if r.status_code == requests.codes.ok:
-        HEALTHY.labels(endpoint=check_uri, source=source, status_code=r.status_code).inc()
-        check_result = HealthCheckResult.SUCCESS
-        self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                     HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
-      else:
-        check_result = HealthCheckResult.ERROR_CODE
-        UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=r.status_code).inc()
-        self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                     HttpHealthCheckLogResult.FAILURE,
-                     'status_code:{0}'.format(r.status_code),
-                     source=source)
-      del r
+      with requests.Session() as s:
+        r = s.request(self._http_method, check_uri, timeout=self._timeout)
+        if r.status_code == requests.codes.ok:
+          HEALTHY.labels(endpoint=check_uri, source=source, status_code=r.status_code).inc()
+          check_result = HealthCheckResult.SUCCESS
+          self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
+                       HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
+        else:
+          check_result = HealthCheckResult.ERROR_CODE
+          UNHEALTHY.labels(endpoint=check_uri, source=source, type=check_result, status_code=r.status_code).inc()
+          self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
+                       HttpHealthCheckLogResult.FAILURE,
+                       'status_code:{0}'.format(r.status_code),
+                       source=source)
+        del r
+        s.close()
 
     except requests.exceptions.Timeout as ex:
       check_result = HealthCheckResult.TIMEOUT

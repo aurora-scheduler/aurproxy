@@ -61,41 +61,44 @@ class NginxProxyMetricsPublisher(object):
     logger.debug('Publishing proxy metrics.')
     url = 'http://localhost:%s/%s' % (self._port, self._path)
     try:
-      res = requests.get(url, timeout=self._timeout)
-      if res.status_code != 200:
-        logger.error(
-            'Failed fetch proxy metrics for %s. Status code: %s',
-            url, res.status_code)
+      with requests.Session() as s:
+        res = s.requests.get(url, timeout=self._timeout)
+        if res.status_code != 200:
+          logger.error(
+              'Failed fetch proxy metrics for %s. Status code: %s',
+              url, res.status_code)
 
-      if res.status_code == 200:
-        lines = [l.strip() for l in res.text.split('\n') if l]
+        if res.status_code == 200:
+          lines = [l.strip() for l in res.text.split('\n') if l]
 
-        # Number of current active connections on the server.
-        active_match = self._ACTIVE_CONNECTIONS_RE.match(lines[0])
-        if active_match:
-          active = int(active_match.group('conn'))
-          update_gauge(self._get_metric_name('active_connections'), active)
-          ACTIVE_CONNECTIONS.set(active)
+          # Number of current active connections on the server.
+          active_match = self._ACTIVE_CONNECTIONS_RE.match(lines[0])
+          if active_match:
+            active = int(active_match.group('conn'))
+            update_gauge(self._get_metric_name('active_connections'), active)
+            ACTIVE_CONNECTIONS.set(active)
 
-        # Total accepts/handled/requests seen since the server started.
-        server = self._SERVER_TOTALS_RE.match(lines[2])
-        if server:
-          update_counter(self._get_metric_name('total_accepts'), int(server.group('acc')))
-          update_counter(self._get_metric_name('total_handled'), int(server.group('hand')))
-          update_counter(self._get_metric_name('total_requests'), int(server.group('req')))
-          TOTAL_ACCEPTS.set(int(server.group('acc')))
-          TOTAL_HANDLED.set(int(server.group('hand')))
-          TOTAL_REQUESTS.set(int(server.group('req')))
+          # Total accepts/handled/requests seen since the server started.
+          server = self._SERVER_TOTALS_RE.match(lines[2])
+          if server:
+            update_counter(self._get_metric_name('total_accepts'), int(server.group('acc')))
+            update_counter(self._get_metric_name('total_handled'), int(server.group('hand')))
+            update_counter(self._get_metric_name('total_requests'), int(server.group('req')))
+            TOTAL_ACCEPTS.set(int(server.group('acc')))
+            TOTAL_HANDLED.set(int(server.group('hand')))
+            TOTAL_REQUESTS.set(int(server.group('req')))
 
-        # Current number of Reading/Writing/Waiting.
-        status = self._SERVER_STATUS_RE.match(lines[3])
-        if status:
-          update_gauge(self._get_metric_name('reading'), int(status.group('read')))
-          update_gauge(self._get_metric_name('writing'), int(status.group('write')))
-          update_gauge(self._get_metric_name('waiting'), int(status.group('wait')))
-          READING.set(int(status.group('read')))
-          WRITING.set(int(status.group('write')))
-          WAITING.set(int(status.group('wait')))
+          # Current number of Reading/Writing/Waiting.
+          status = self._SERVER_STATUS_RE.match(lines[3])
+          if status:
+            update_gauge(self._get_metric_name('reading'), int(status.group('read')))
+            update_gauge(self._get_metric_name('writing'), int(status.group('write')))
+            update_gauge(self._get_metric_name('waiting'), int(status.group('wait')))
+            READING.set(int(status.group('read')))
+            WRITING.set(int(status.group('write')))
+            WAITING.set(int(status.group('wait')))
+        del res
+        s.close()
     except Exception:
       logger.exception('Failed to fetch proxy metrics for %s.', url)
 
