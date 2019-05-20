@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Aurproxy setup script. Desgined to be run on executors after the tarball is
+# unpacked.
+
+set -e
+
+# Create directories.
+echo "Creating runtime directories..."
+mkdir -p logs
+
+# Install Python dependencies.
+echo "Installing Python dependencies..."
+virtualenv venv
+. venv/bin/activate
+pip install -r requirements.txt
+
+# Move templates into source directory?
+#echo "Copying templates..."
+#cp -r templates tellapart/aurproxy/
+
+echo "Done"
