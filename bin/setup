@@ -7,6 +7,7 @@ set -e
 
 # Create directories.
 echo "Creating runtime directories..."
+ln -s ../../templates tellapart/aurproxy/templates
 mkdir -p logs
 
 # Install Python dependencies.
