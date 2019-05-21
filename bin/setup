@@ -16,8 +16,4 @@ virtualenv venv
 . venv/bin/activate
 pip install -r requirements.txt
 
-# Move templates into source directory?
-#echo "Copying templates..."
-#cp -r templates tellapart/aurproxy/
-
 echo "Done"
