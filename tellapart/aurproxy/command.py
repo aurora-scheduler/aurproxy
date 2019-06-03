@@ -22,7 +22,9 @@ import json
 import logging
 
 from tellapart.aurproxy.app.module.http import lifecycle_blueprint
-from tellapart.aurproxy.app.lifecycle import register_shutdown_handler
+from tellapart.aurproxy.app.lifecycle import (
+  register_healthcheck_handler,
+  register_shutdown_handler)
 from tellapart.aurproxy.metrics.store import (
   add_publisher,
   set_root_prefix)
@@ -168,6 +170,7 @@ def run(management_port,
         registerer = load_cli_plugin(registration_class, registration_arg)
         registerer.add()
         register_shutdown_handler(registerer.remove)
+        register_healthcheck_handler(registerer.checker())
       except Exception:
         logger.exception('Registration failure.')
         raise

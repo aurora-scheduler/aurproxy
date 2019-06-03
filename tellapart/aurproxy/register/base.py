@@ -44,6 +44,16 @@ class BaseRegisterer(object):
   def remove(self):
     raise NotImplementedError('remove')
 
+  def checker(self):
+    """
+    Returns a function that when called will return True or False
+    depending on whether the registerer's effect of calling add is still true
+
+    This function may cache or determine its own cadence for determining state
+    since it may be called more frequently than desired.
+    """
+    return lambda: True
+
   def synchronize(self, write):
     raise NotImplementedError('synchronize')
 
