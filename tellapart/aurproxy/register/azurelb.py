@@ -24,6 +24,8 @@ from tellapart.aurproxy.register.base import (
 )
 from tellapart.aurproxy.util import get_logger
 
+from time import time
+
 logger = get_logger(__name__)
 
 class AzureException(BaseException): pass
@@ -234,6 +236,10 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     super(AzureGatewaySelfRegisterer, self).__init__(
         region, subscription_id, tenant_id, client_id, client_secret)
     self._lb_names = lb_names.split(',')
+    self._refresh_interval_secs = 60
+    self._last_checked = 0
+    self._last_result = False
+    self._check_states = [False for lb in self._lb_names]
 
   @property
   def lbs(self):
@@ -358,9 +364,10 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     """
     instance_id = self.get_current_instance_id()
     vm = self.get_current_machine()
-    for lb in self.lbs:
+    for i, lb in enumerate(self.lbs):
       # Note: This only finds the VM in one of the balancer's backend pools
       match = self.match_load_balancer_and_vm(lb, vm)
+      logger.info("add:: lb {} had result: {}".format(i, match))
       if not match:
         self.record(lb.name,
                     instance_id,
@@ -370,11 +377,33 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
             raise AzureException("failed to register vm {} with lb {}".format(vm, lb))
         else:
             logger.info("registered vm {} with lb {}".format(vm, lb))
+            self._check_states[i] = True
       else:
         self.record(lb.name,
                     instance_id,
                     RegistrationAction.NONE,
                     [RegistrationActionReason.ALREADY_REGISTERED])
+
+
+  def check(self):
+    """
+    Return current 'registration' status as a boolean.
+    This state may change at a frequency less often than itself is called.
+    """
+    now = time()
+    if not self._last_result or self._last_checked < (now - self._refresh_interval_secs):
+        logger.info("running actual check of registration state")
+        instance_id = self.get_current_instance_id()
+        vm = self.get_current_machine()
+        for i, lb in enumerate(self.lbs):
+            self._check_states[i] = (self.match_load_balancer_and_vm(lb, vm) is not None)
+
+        self._last_checked = now
+
+    self._last_result = (self._check_states.count(True) > 0)
+
+    return self._last_result, 'Last check at epoch: {}'.format(self._last_checked)
+
 
   def remove(self):
     """
