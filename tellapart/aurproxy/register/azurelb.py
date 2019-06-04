@@ -400,7 +400,7 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
 
         self._last_checked = now
 
-    self._last_result = next(iter([x for x in self._check_states if x is True]), False)
+    self._last_result = (self._check_states.count(True) > 0)
 
     return self._last_result, 'Last check at epoch: {}'.format(self._last_checked)
 
