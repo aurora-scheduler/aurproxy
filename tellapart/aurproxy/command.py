@@ -170,7 +170,7 @@ def run(management_port,
         registerer = load_cli_plugin(registration_class, registration_arg)
         registerer.add()
         register_shutdown_handler(registerer.remove)
-        register_healthcheck_handler(registerer.checker())
+        register_healthcheck_handler(registerer.check)
       except Exception:
         logger.exception('Registration failure.')
         raise
