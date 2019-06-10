@@ -103,7 +103,9 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     if not match or not bp:
         logger.warn('failed to find nic without pooling ip config for this vm!')
         return False
-    match['ip_config'].load_balancer_backend_address_pools = [bp]
+    updated_pools = (match['ip_config'].load_balancer_backend_address_pools or [])
+    updated_pools.append(bp)
+    match['ip_config'].load_balancer_backend_address_pools = updated_pools
     nic = match['network_interface']
 
     return self.save_network_interface(nic)
@@ -123,7 +125,11 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     if not match: return False
     # remove the link between the VM's IP config object and the corresponding load balancer backend pool
     nic = match['network_interface']
-    match['ip_config'].load_balancer_backend_address_pools = None
+    remove_bp = match['backend_pool']
+    updated_pools = [bp for bp in match['ip_config'].load_balancer_backend_address_pools if bp.id != remove_bp.id]
+    if len(updated_pools) < 1:
+        updated_pools = None
+    match['ip_config'].load_balancer_backend_address_pools = updated_pools
 
     return self.save_network_interface(nic)
 
@@ -299,7 +305,9 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
         logger.warn('failed to find nic without pooling ip config for this vm!')
         return False
 
-    match['ip_config'].application_gateway_backend_address_pools = [bp]
+    updated_pools = (match['ip_config'].application_gateway_backend_address_pools or [])
+    updated_pools.append(bp)
+    match['ip_config'].application_gateway_backend_address_pools = updated_pools
     nic = match['network_interface']
 
     return self.save_network_interface(nic)
@@ -319,7 +327,11 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     if not match: return False
     # remove the link between the VM's IP config object and the corresponding load balancer backend pool
     nic = match['network_interface']
-    match['ip_config'].application_gateway_backend_address_pools = None
+    remove_bp = match['backend_pool']
+    updated_pools = [bp for bp in match['ip_config'].application_gateway_backend_address_pools if bp.id != remove_bp.id]
+    if len(updated_pools) < 1:
+        updated_pools = None
+    match['ip_config'].application_gateway_backend_address_pools = updated_pools
 
     return self.save_network_interface(nic)
 
