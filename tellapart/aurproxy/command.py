@@ -23,6 +23,7 @@ import logging
 
 from tellapart.aurproxy.app.module.http import lifecycle_blueprint
 from tellapart.aurproxy.app.lifecycle import (
+  execute_shutdown_handlers,
   register_healthcheck_handler,
   register_shutdown_handler)
 from tellapart.aurproxy.metrics.store import (
@@ -323,7 +324,12 @@ def _start_web(port, sentry_dsn=None, blueprints=None):
   if sentry_dsn:
     app = setup_sentry_wsgi(app, sentry_dsn)
   http_server = WSGIServer(('0.0.0.0', int(port)), app)
-  http_server.serve_forever()
+  try:
+      http_server.serve_forever()
+  except KeyboardInterrupt:
+      logger.info('Keyboard interrupt, executing shutdown hooks...')
+      execute_shutdown_handlers()
+
 
 if __name__ == '__main__':
   try:

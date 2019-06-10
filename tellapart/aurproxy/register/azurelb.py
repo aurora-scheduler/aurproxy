@@ -28,6 +28,19 @@ from time import time
 
 logger = get_logger(__name__)
 
+
+def upsert_pool(bp, pools):
+    pools = (pools or [])
+    # avoid double-add if the pool is already present
+    pools = [p for p in pools if p.id != bp.id]
+    pools.append(bp)
+
+    return pools
+
+def drop_pool(bp, pools):
+    return [p for p in pools if p.id != bp.id]
+
+
 class AzureException(BaseException): pass
 
 class BaseAzureLbRegisterer(AzureRegisterer):
@@ -103,7 +116,8 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     if not match or not bp:
         logger.warn('failed to find nic without pooling ip config for this vm!')
         return False
-    match['ip_config'].load_balancer_backend_address_pools = [bp]
+    match['ip_config'].load_balancer_backend_address_pools = upsert_pool(
+        bp, match['ip_config'].load_balancer_backend_address_pools)
     nic = match['network_interface']
 
     return self.save_network_interface(nic)
@@ -123,7 +137,8 @@ class BaseAzureLbRegisterer(AzureRegisterer):
     if not match: return False
     # remove the link between the VM's IP config object and the corresponding load balancer backend pool
     nic = match['network_interface']
-    match['ip_config'].load_balancer_backend_address_pools = None
+    match['ip_config'].load_balancer_backend_address_pools = drop_pool(
+        match['backend_pool'], match['ip_config'].load_balancer_backend_address_pools)
 
     return self.save_network_interface(nic)
 
@@ -299,7 +314,8 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
         logger.warn('failed to find nic without pooling ip config for this vm!')
         return False
 
-    match['ip_config'].application_gateway_backend_address_pools = [bp]
+    match['ip_config'].application_gateway_backend_address_pools = upsert_pool(
+        bp, match['ip_config'].application_gateway_backend_address_pools)
     nic = match['network_interface']
 
     return self.save_network_interface(nic)
@@ -319,7 +335,8 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     if not match: return False
     # remove the link between the VM's IP config object and the corresponding load balancer backend pool
     nic = match['network_interface']
-    match['ip_config'].application_gateway_backend_address_pools = None
+    match['ip_config'].application_gateway_backend_address_pools = drop_pool(
+        match['backend_pool'], match['ip_config'].application_gateway_backend_address_pools)
 
     return self.save_network_interface(nic)
 
