@@ -231,7 +231,7 @@ class AzureLbSelfRegisterer(BaseAzureLbRegisterer):
 
 # TODO refactor with less spite
 class AzureGatewaySelfRegisterer(AzureRegisterer):
-  def __init__(self, lb_names, region, subscription_id, tenant_id, client_id=None, client_secret=None):
+  def __init__(self, lb_names, region, subscription_id, tenant_id, client_id=None, client_secret=None, refresh_interval=60):
     """
     Common code for Azure application gateway Registerers.
 
@@ -251,10 +251,11 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     super(AzureGatewaySelfRegisterer, self).__init__(
         region, subscription_id, tenant_id, client_id, client_secret)
     self._lb_names = lb_names.split(',')
-    self._refresh_interval_secs = 60
+    self._refresh_interval_secs = int(refresh_interval)
+    self.perform_check = (self._refresh_interval_secs > 0)
     self._last_checked = 0
-    self._last_result = False
-    self._check_states = [False for lb in self._lb_names]
+    self._last_result = True
+    self._check_states = [True for lb in self._lb_names]
 
   @property
   def lbs(self):
@@ -384,7 +385,6 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     for i, lb in enumerate(self.lbs):
       # Note: This only finds the VM in one of the balancer's backend pools
       match = self.match_load_balancer_and_vm(lb, vm)
-      logger.info("add:: lb {} had result: {}".format(i, match))
       if not match:
         self.record(lb.name,
                     instance_id,
@@ -408,14 +408,15 @@ class AzureGatewaySelfRegisterer(AzureRegisterer):
     This state may change at a frequency less often than itself is called.
     """
     now = time()
-    if not self._last_result or self._last_checked < (now - self._refresh_interval_secs):
-        logger.info("running actual check of registration state")
+    if self.perform_check and (not self._last_result or self._last_checked < (now - self._refresh_interval_secs)):
+        logger.debug("running actual check of registration state")
         instance_id = self.get_current_instance_id()
         vm = self.get_current_machine()
         for i, lb in enumerate(self.lbs):
             self._check_states[i] = (self.match_load_balancer_and_vm(lb, vm) is not None)
-
         self._last_checked = now
+    else:
+        logger.debug("skip full health check, using cached state")
 
     self._last_result = (self._check_states.count(True) > 0)
 
