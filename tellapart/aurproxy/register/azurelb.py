@@ -231,7 +231,7 @@ class AzureLbSelfRegisterer(BaseAzureLbRegisterer):
 
 # TODO refactor with less spite
 class AzureGatewaySelfRegisterer(AzureRegisterer):
-  def __init__(self, lb_names, region, subscription_id, tenant_id, client_id=None, client_secret=None, refresh_interval=60):
+  def __init__(self, lb_names, region, subscription_id, tenant_id, client_id=None, client_secret=None, refresh_interval=0):
     """
     Common code for Azure application gateway Registerers.
 
