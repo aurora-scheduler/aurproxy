@@ -66,7 +66,7 @@ def check_health():
   Returns:
     A tuple of (success, message).
   """
-  logger.info('Executing {} health check handlers.'.format(len(_HEALTHCHECK_HANDLERS)))
+  logger.debug('Executing {} health check handlers.'.format(len(_HEALTHCHECK_HANDLERS)))
   for handler in _HEALTHCHECK_HANDLERS:
     result, message = handler()
     if not result:
