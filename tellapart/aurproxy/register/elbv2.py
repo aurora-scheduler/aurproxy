@@ -42,6 +42,7 @@ class ElbSelfRegisterer(AwsRegisterer):
                 instance_id,
                 RegistrationAction.REGISTER)
 
+
   def remove(self):
     """
     Remove the current instance from all configured ELBs.
