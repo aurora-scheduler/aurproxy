@@ -20,6 +20,9 @@ __copyright__ = 'Copyright (C) 2015 TellApart, Inc. All Rights Reserved.'
 import boto.ec2
 import boto.ec2.elb
 import boto.route53
+
+import boto3
+
 import requests
 
 from tellapart.aurproxy.register.base import BaseRegisterer
@@ -155,6 +158,15 @@ class BotoConnectionManager(object):
     if not getattr(self, '_elb', None):
       self._elb = self._make_conn(boto.ec2.elb)
     return self._elb
+
+  @property
+  def elbv2(self):
+    """
+    A boto3 ELBV2 connection.
+    """
+    if not getattr(self, '_elbv2', None):
+      self._elbv2 = boto3.client('elbv2', region_name=self._region, aws_access_key_id=self._access_key, aws_secret_access_key=self._secret_key)
+    return self._elbv2
 
   @property
   def route53(self):
