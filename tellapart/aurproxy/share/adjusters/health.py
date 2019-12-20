@@ -16,7 +16,7 @@ import collections
 import copy
 from gevent import spawn_later
 from gevent.event import Event
-import requests
+import urllib2
 
 from tellapart.aurproxy.audit import AuditItem
 from tellapart.aurproxy.share.adjuster import ShareAdjuster
@@ -58,12 +58,14 @@ class HealthCheckResult(object):
   SUCCESS = 'success'
   TIMEOUT = 'timeout'
   UNKNOWN_ERROR = 'unknown_error'
+  CONNECTION_ERROR = 'connection_error'
 
 HEALTHY_RESULTS = [ HealthCheckResult.SUCCESS ]
 UNCHANGED_RESULTS = [ HealthCheckResult.KNOWN_LOCAL_ERROR ]
 UNHEALTHY_RESULTS = [ HealthCheckResult.ERROR_CODE,
                       HealthCheckResult.KNOWN_REMOTE_ERROR,
                       HealthCheckResult.TIMEOUT,
+                      HealthCheckResult.CONNECTION_ERROR,
                       HealthCheckResult.UNKNOWN_ERROR ]
 
 SUPPORTED_HEALTHCHECK_METHODS = ('GET', 'HEAD')
@@ -166,7 +168,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       Check URI string.
     """
     uri_template = 'http://{0}:{1}{2}'
-    if self._port_name:
+    if self._port_name and 'port_map' in self._endpoint.context:
       port = self._endpoint.context['port_map'][self._port_name]
     else:
       port = self._endpoint.port
@@ -184,42 +186,46 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
     if self._stop_event.is_set():
       return
 
-    check_uri = self._build_check_uri()
     source = self._endpoint.context.get('source') or ''
     error_log_fn = None
     try:
+      check_uri = self._build_check_uri()
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
                    HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
 
-      r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
+      opener = urllib2.build_opener(urllib2.HTTPHandler)
+      request = urllib2.Request(check_uri)
+      request.get_method = lambda: self._http_method.upper()
+      r = opener.open(request, timeout=self._timeout)
 
-      if r.status_code == requests.codes.ok:
+      if r.code == 200:
         HEALTHY.labels(source=source).inc()
         check_result = HealthCheckResult.SUCCESS
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
       else:
         check_result = HealthCheckResult.ERROR_CODE
-        UNHEALTHY.labels(source=source, type=check_result, status_code=r.status_code).inc()
+        UNHEALTHY.labels(source=source, type=check_result, status_code=r.code).inc()
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
-                     'status_code:{0}'.format(r.status_code),
+                     'status_code:{0}'.format(r.code),
                      source=source)
       del r
 
-    except requests.exceptions.Timeout as ex:
-      check_result = HealthCheckResult.TIMEOUT
-      UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
+    # except requests.exceptions.Timeout as ex:
+    except urllib2.HTTPError as ex:
+      check_result = HealthCheckResult.ERROR_CODE
+      UNHEALTHY.labels(source=source, type=check_result, status_code=ex.code).inc()
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                   HttpHealthCheckLogResult.TIMEOUT,
+                   HttpHealthCheckLogResult.ERROR,
                    log_fn=logger.error,
                    source=source)
-    except requests.exceptions.ConnectionError as ex:
-      if 'gaierror' in unicode(ex):
+    except urllib2.URLError as ex:
+      if 'gaierror' in unicode(ex).lower():
         check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
         error_log_fn = logger.error
       elif 'connection refused' in unicode(ex).lower():
-        check_result = HealthCheckResult.KNOWN_REMOTE_ERROR
+        check_result = HealthCheckResult.CONNECTION_ERROR
         error_log_fn = logger.error
       else:
         check_result = HealthCheckResult.UNKNOWN_ERROR
