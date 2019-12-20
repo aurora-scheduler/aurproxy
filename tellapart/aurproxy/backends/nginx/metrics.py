@@ -68,7 +68,7 @@ class NginxProxyMetricsPublisher(object):
             url, res.status_code)
 
       if res.status_code == 200:
-        lines = [l.strip() for l in res.text.split('\n') if l]
+        lines = [l.strip() for l in res.content.split('\n') if l]
 
         # Number of current active connections on the server.
         active_match = self._ACTIVE_CONNECTIONS_RE.match(lines[0])
