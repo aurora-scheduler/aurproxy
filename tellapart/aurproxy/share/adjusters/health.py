@@ -16,7 +16,7 @@ import collections
 import copy
 from gevent import spawn_later
 from gevent.event import Event
-import requests
+import urllib2
 
 from tellapart.aurproxy.audit import AuditItem
 from tellapart.aurproxy.share.adjuster import ShareAdjuster
@@ -191,40 +191,42 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
                    HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
 
-      r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
+      r = urllib2.urlopen(check_uri, timeout=self._timeout)
+      #r = getattr(requests, self._http_method)(check_uri, timeout=self._timeout)
 
-      if r.status_code == requests.codes.ok:
+      if r.code == 200:
         HEALTHY.labels(source=source).inc()
         check_result = HealthCheckResult.SUCCESS
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
       else:
         check_result = HealthCheckResult.ERROR_CODE
-        UNHEALTHY.labels(source=source, type=check_result, status_code=r.status_code).inc()
+        UNHEALTHY.labels(source=source, type=check_result, status_code=r.code).inc()
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
-                     'status_code:{0}'.format(r.status_code),
+                     'status_code:{0}'.format(r.code),
                      source=source)
       del r
 
-    except requests.exceptions.Timeout as ex:
+    # except requests.exceptions.Timeout as ex:
+    except urllib2.HTTPError as ex:
       check_result = HealthCheckResult.TIMEOUT
       UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                    HttpHealthCheckLogResult.TIMEOUT,
                    log_fn=logger.error,
                    source=source)
-    except requests.exceptions.ConnectionError as ex:
-      if 'gaierror' in unicode(ex):
-        check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
-        error_log_fn = logger.error
-      elif 'connection refused' in unicode(ex).lower():
-        check_result = HealthCheckResult.KNOWN_REMOTE_ERROR
-        error_log_fn = logger.error
-      else:
-        check_result = HealthCheckResult.UNKNOWN_ERROR
-        error_log_fn = logger.exception
-      UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
+    # except requests.exceptions.ConnectionError as ex:
+    #   if 'gaierror' in unicode(ex):
+    #     check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
+    #     error_log_fn = logger.error
+    #   elif 'connection refused' in unicode(ex).lower():
+    #     check_result = HealthCheckResult.KNOWN_REMOTE_ERROR
+    #     error_log_fn = logger.error
+    #   else:
+    #     check_result = HealthCheckResult.UNKNOWN_ERROR
+    #     error_log_fn = logger.exception
+    #   UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
     except Exception as ex:
       check_result = HealthCheckResult.UNKNOWN_ERROR
       error_log_fn = logger.exception
