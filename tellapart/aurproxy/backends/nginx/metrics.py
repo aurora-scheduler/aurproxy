@@ -21,6 +21,7 @@ from tellapart.aurproxy.metrics.store import (
 )
 from tellapart.aurproxy.util import get_logger
 from prometheus_client import Counter, Gauge
+from memory_profiler import profile
 
 logger = get_logger(__name__)
 
@@ -55,6 +56,7 @@ class NginxProxyMetricsPublisher(object):
     self._timeout = timeout
     self._path = path
 
+  @profile
   def publish(self):
     """Fetch and publish proxy metrics.
     """

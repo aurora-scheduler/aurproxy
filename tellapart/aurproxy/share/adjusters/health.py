@@ -23,6 +23,7 @@ from tellapart.aurproxy.share.adjuster import ShareAdjuster
 from tellapart.aurproxy.util import get_logger
 
 from prometheus_client import Counter
+from memory_profiler import profile
 
 logger = get_logger(__name__)
 
@@ -174,6 +175,7 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
                                port,
                                self._route)
 
+  @profile
   def _check(self):
     """
     Run healthcheck.
