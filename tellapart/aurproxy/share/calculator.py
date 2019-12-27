@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import operator
+from functools import reduce
 
 from tellapart.aurproxy.audit import AuditItem
 

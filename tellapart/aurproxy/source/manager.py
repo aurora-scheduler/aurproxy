@@ -131,7 +131,7 @@ class SourceGroupManager(object):
     """
     A slug string created from the slugs of all primary sources in the group.
     """
-    return hashlib.sha256('__'.join([s.slug for s in self._sources])).hexdigest()
+    return hashlib.sha256('__'.join([s.slug for s in self._sources]).encode('utf-8')).hexdigest()
 
   def _should_adjust_weight(self):
     now = datetime.now()

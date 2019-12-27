@@ -16,7 +16,8 @@ import collections
 import copy
 from gevent import spawn_later
 from gevent.event import Event
-import urllib2
+import urllib.request
+import urllib.error
 
 from tellapart.aurproxy.audit import AuditItem
 from tellapart.aurproxy.share.adjuster import ShareAdjuster
@@ -193,38 +194,39 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
                    HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
 
-      opener = urllib2.build_opener(urllib2.HTTPHandler)
-      request = urllib2.Request(check_uri)
-      request.get_method = lambda: self._http_method.upper()
-      r = opener.open(request, timeout=self._timeout)
+      # opener = urllib.request.build_opener(urllib.request.HTTPHandler)
+      # req = urllib.request.urlopen(check_uri)
+      # req.get_method = lambda: self._http_method.upper()
+      # r = opener.open(req, timeout=self._timeout)
+      # TODO Support http_method
+      r = urllib.request.urlopen(check_uri, timeout=self._timeout)
 
-      if r.code == 200:
+      if r.getcode() == 200:
         HEALTHY.labels(source=source).inc()
         check_result = HealthCheckResult.SUCCESS
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
       else:
         check_result = HealthCheckResult.ERROR_CODE
-        UNHEALTHY.labels(source=source, type=check_result, status_code=r.code).inc()
+        UNHEALTHY.labels(source=source, type=check_result, status_code=r.getcode()).inc()
         self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
-                     'status_code:{0}'.format(r.code),
+                     'status_code:{0}'.format(r.getcode()),
                      source=source)
-      del r
 
     # except requests.exceptions.Timeout as ex:
-    except urllib2.HTTPError as ex:
+    except urllib.error.HTTPError as ex:
       check_result = HealthCheckResult.ERROR_CODE
       UNHEALTHY.labels(source=source, type=check_result, status_code=ex.code).inc()
       self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
                    HttpHealthCheckLogResult.ERROR,
                    log_fn=logger.error,
                    source=source)
-    except urllib2.URLError as ex:
-      if 'gaierror' in unicode(ex).lower():
+    except urllib.error.URLError as ex:
+      if 'gaierror' in ex.reason.encode('utf-8').lower():
         check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
         error_log_fn = logger.error
-      elif 'connection refused' in unicode(ex).lower():
+      elif 'connection refused' in ex.reason.encode('utf-8').lower():
         check_result = HealthCheckResult.CONNECTION_ERROR
         error_log_fn = logger.error
       else:
@@ -235,6 +237,11 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       check_result = HealthCheckResult.UNKNOWN_ERROR
       error_log_fn = logger.exception
       UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
+    else:
+      HEALTHY.labels(source=source).inc()
+      check_result = HealthCheckResult.SUCCESS
+      self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
+                   HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
 
     if error_log_fn:
       self._record(event=HttpHealthCheckLogEvent.RUNNING_CHECK,

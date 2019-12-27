@@ -24,6 +24,7 @@ from collections import namedtuple
 
 import gevent
 import gevent.event
+from idna import unicode
 from raven import Client
 from raven.conf import setup_logging
 from raven.handlers.logging import SentryHandler
@@ -69,7 +70,7 @@ class KlassFactory(object):
     self._kwargs = kwargs
 
   def build(self, **extra_kwargs):
-    kwargs = dict(self._kwargs.items() + extra_kwargs.items())
+    kwargs = { **self._kwargs, **extra_kwargs }
     return load_plugin(self._klass, **kwargs)
 
 def load_plugin(plugin_class_path, **plugin_kwargs):
@@ -126,13 +127,13 @@ def load_klass_plugin(klass_dict,
   klass_dict_copy = copy.deepcopy(klass_dict)
   klass = klass_dict_copy.pop(klass_field_name)
   kwargs = klass_dict_copy
-  kwargs = dict(kwargs.items() + extra_kwargs.items())
+  kwargs = { **kwargs, **extra_kwargs }
   return load_plugin(klass, **kwargs)
 
 def slugify(s):
   slug = unicodedata.normalize('NFKD', unicode(s))
   slug = slug.encode('ascii', 'ignore').lower()
-  slug = re.sub(r'[^a-z0-9]+', '_', slug).strip('_')
+  slug = re.sub(r"[^a-z0-9]+", '_', slug.decode("utf-8")).strip('_')
 
   # To avoid slug collision, append hash of raw string
   m = md5()

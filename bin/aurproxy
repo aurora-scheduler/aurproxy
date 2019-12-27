@@ -9,4 +9,4 @@ fi
 
 . venv/bin/activate
 
-python -m tellapart.aurproxy.command "$@"
+python3 -m tellapart.aurproxy.command "$@"

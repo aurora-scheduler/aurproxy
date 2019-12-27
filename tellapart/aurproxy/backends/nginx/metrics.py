@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import re
-import urllib2
+import urllib.request
 
 from tellapart.aurproxy.metrics.store import (
   update_counter,
@@ -37,10 +37,10 @@ class NginxProxyMetricsPublisher(object):
   """Class that polls the proxy for operational metrics and publishes them.
   """
 
-  _ACTIVE_CONNECTIONS_RE = re.compile(r'Active connections: (?P<conn>\d+)')
-  _SERVER_TOTALS_RE = re.compile('^(?P<acc>\d+)\s+(?P<hand>\d+)\s+(?P<req>\d+)')
+  _ACTIVE_CONNECTIONS_RE = re.compile(r"Active connections: (?P<conn>\d+)")
+  _SERVER_TOTALS_RE = re.compile(r"^(?P<acc>\d+)\s+(?P<hand>\d+)\s+(?P<req>\d+)")
   _SERVER_STATUS_RE = re.compile(
-      'Reading: (?P<read>\d+) Writing: (?P<write>\d+) Waiting: (?P<wait>\d+)')
+      r"Reading: (?P<read>\d+) Writing: (?P<write>\d+) Waiting: (?P<wait>\d+)")
 
   _PROXY_METRICS_PREFIX = 'proxy.%s'
 
@@ -61,14 +61,14 @@ class NginxProxyMetricsPublisher(object):
     logger.debug('Publishing proxy metrics.')
     url = 'http://localhost:%s/%s' % (self._port, self._path)
     try:
-      res = urllib2.urlopen(url=url, timeout=self._timeout)
-      if res.code != 200:
+      res = urllib.request.urlopen(url=url, timeout=self._timeout)
+      if res.getcode() != 200:
         logger.error(
             'Failed fetch proxy metrics for %s. Status code: %s',
-            url, res.code)
+            url, res.getcode())
 
-      if res.code == 200:
-        lines = [l.strip() for l in res.read().split('\n') if l]
+      if res.getcode() == 200:
+        lines = [l.strip().decode('utf-8') for l in res.readlines() if l]
 
         # Number of current active connections on the server.
         active_match = self._ACTIVE_CONNECTIONS_RE.match(lines[0])
