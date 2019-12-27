@@ -111,7 +111,7 @@ def load_cli_kwargs(kwargs_list, delimiter='='):
 def load_cli_plugin(klass, cli_kwargs, extra_kwargs=None):
   kwargs = load_cli_kwargs(cli_kwargs)
   if extra_kwargs:
-    kwargs = dict(kwargs.items() + extra_kwargs.items())
+    kwargs = { **kwargs, **extra_kwargs }
   return load_plugin(klass, **kwargs)
 
 def load_registration_plugin(registration_class, *registration_kwargs):

@@ -223,19 +223,8 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
                    log_fn=logger.error,
                    source=source)
     except urllib.error.URLError as ex:
-      if 'gaierror' in ex.reason.encode('utf-8').lower():
-        check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
-        error_log_fn = logger.error
-      elif 'connection refused' in ex.reason.encode('utf-8').lower():
-        check_result = HealthCheckResult.CONNECTION_ERROR
-        error_log_fn = logger.error
-      else:
-        check_result = HealthCheckResult.UNKNOWN_ERROR
-        error_log_fn = logger.exception
-      UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
-    except Exception as ex:
       check_result = HealthCheckResult.UNKNOWN_ERROR
-      error_log_fn = logger.exception
+      error_log_fn = logger.error
       UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
     else:
       HEALTHY.labels(source=source).inc()
