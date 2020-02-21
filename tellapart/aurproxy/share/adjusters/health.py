@@ -16,7 +16,8 @@ import collections
 import copy
 from gevent import spawn_later
 from gevent.event import Event
-import urllib2
+from urllib import request
+from urllib import error
 
 from tellapart.aurproxy.audit import AuditItem
 from tellapart.aurproxy.share.adjuster import ShareAdjuster
@@ -74,6 +75,7 @@ HEALTHY = Counter('healthy', 'Total healthy (count)', ['source'])
 UNHEALTHY = Counter('unhealthy', 'Total unhealthy (count)', ['source', 'type', 'status_code'])
 UPDATED_HEALTH_STATUS = Counter('updated_health_status', 'Total updated_health_status (count)')
 RUNNING_CALLBACK = Counter('running_callback', 'Total running_callback (count)', ['type'])
+RECORD_MESSAGE = 'event:%(event)s result:%(result)s source:%(source)s check_uri:%(check_uri)s msg:%(msg)s'
 
 class HealthCheckStatus(object):
   """
@@ -188,65 +190,83 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
 
     source = self._endpoint.context.get('source') or ''
     error_log_fn = None
+    msg = None
     try:
       check_uri = self._build_check_uri()
-      self._record(HttpHealthCheckLogEvent.STARTING_CHECK,
-                   HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
+      msg = self._record_msg(HttpHealthCheckLogEvent.STARTING_CHECK,
+                   HttpHealthCheckLogResult.SUCCESS, source=source)
+      logger.debug(RECORD_MESSAGE, msg)
 
-      opener = urllib2.build_opener(urllib2.HTTPHandler)
-      request = urllib2.Request(check_uri)
-      request.get_method = lambda: self._http_method.upper()
-      r = opener.open(request, timeout=self._timeout)
+      # opener = urllib.request.build_opener(urllib.request.HTTPHandler)
+      # req = urllib.request.urlopen(check_uri)
+      # req.get_method = lambda: self._http_method.upper()
+      # r = opener.open(req, timeout=self._timeout)
+      # TODO Support http_method
+      r = request.urlopen(check_uri, timeout=self._timeout)
 
-      if r.code == 200:
+      if r.getcode() == 200:
         HEALTHY.labels(source=source).inc()
         check_result = HealthCheckResult.SUCCESS
-        self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
-                     HttpHealthCheckLogResult.SUCCESS, log_fn=logger.debug, source=source)
+        msg = self._record_msg(HttpHealthCheckLogEvent.RUNNING_CHECK,
+                     HttpHealthCheckLogResult.SUCCESS, source=source)
+        logger.debug(RECORD_MESSAGE, msg)
+
       else:
         check_result = HealthCheckResult.ERROR_CODE
-        UNHEALTHY.labels(source=source, type=check_result, status_code=r.code).inc()
-        self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
+        UNHEALTHY.labels(source=source, type=check_result, status_code=r.getcode()).inc()
+        msg = self._record_msg(HttpHealthCheckLogEvent.RUNNING_CHECK,
                      HttpHealthCheckLogResult.FAILURE,
-                     'status_code:{0}'.format(r.code),
+                     'status_code:{0}'.format(r.getcode()),
                      source=source)
-      del r
+        logger.error(RECORD_MESSAGE, msg)
 
-    # except requests.exceptions.Timeout as ex:
-    except urllib2.HTTPError as ex:
+    except error.HTTPError as ex:
       check_result = HealthCheckResult.ERROR_CODE
       UNHEALTHY.labels(source=source, type=check_result, status_code=ex.code).inc()
-      self._record(HttpHealthCheckLogEvent.RUNNING_CHECK,
+      msg = self._record_msg(HttpHealthCheckLogEvent.RUNNING_CHECK,
                    HttpHealthCheckLogResult.ERROR,
-                   log_fn=logger.error,
                    source=source)
-    except urllib2.URLError as ex:
-      if 'gaierror' in unicode(ex).lower():
-        check_result = HealthCheckResult.KNOWN_LOCAL_ERROR
-        error_log_fn = logger.error
-      elif 'connection refused' in unicode(ex).lower():
-        check_result = HealthCheckResult.CONNECTION_ERROR
-        error_log_fn = logger.error
-      else:
-        check_result = HealthCheckResult.UNKNOWN_ERROR
-        error_log_fn = logger.exception
-      UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
-    except Exception as ex:
+      logger.error(RECORD_MESSAGE, msg)
+
+    except error.URLError as ex:
       check_result = HealthCheckResult.UNKNOWN_ERROR
-      error_log_fn = logger.exception
+      error_log_fn = True
       UNHEALTHY.labels(source=source, type=check_result, status_code=502).inc()
+    else:
+      check_result = HealthCheckResult.SUCCESS
+      msg = self._record_msg(HttpHealthCheckLogEvent.RUNNING_CHECK,
+                   HttpHealthCheckLogResult.SUCCESS, source=source)
+      logger.debug(RECORD_MESSAGE, msg)
 
     if error_log_fn:
-      self._record(event=HttpHealthCheckLogEvent.RUNNING_CHECK,
+      msg = self._record_msg(event=HttpHealthCheckLogEvent.RUNNING_CHECK,
                    result=check_result,
                    msg='Exception when executing HttpHealthCheck.',
-                   log_fn=error_log_fn, source=source)
+                   source=source)
+      logger.error(RECORD_MESSAGE, msg)
 
     self._update_status(check_result, source)
     spawn_later(self._interval, self._check)
 
-  def _record(self, event, result, msg='', log_fn=logger.info, source=''):
+  def _record_msg(self, event, result, msg='', source=''):
     """
+    Utility to record Message
+
+    Args:
+      event - HttpHealthCheckLogEvent.
+      result - HttpHealthCheckLogResult.
+      msg - str - Extra message.
+      log_fn - function - logger function to use.
+    """
+    context = { 'event': event,
+                'result': result,
+                'source': source,
+                'check_uri': self._build_check_uri(),
+                'msg': msg }
+    return context
+
+  def _record(self, event, result, msg='', log_fn=logger.info, source=''):
+    """ TODO memory Leak
     Utility to record HttpHealthCheck events and results.
 
     Args:
@@ -292,10 +312,12 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
       old_status = self._status
       self._status = calculated_status
       UPDATED_HEALTH_STATUS.inc()
-      self._record(HttpHealthCheckLogEvent.UPDATED_HEALTH_STATUS,
+      msg = self._record_msg(HttpHealthCheckLogEvent.UPDATED_HEALTH_STATUS,
                    HttpHealthCheckLogResult.SUCCESS,
                    '{0} -> {1}'.format(old_status, calculated_status),
                    source=source)
+      logger.info(RECORD_MESSAGE, msg)
+
       if self._signal_update_fn:
         try:
           # Execute callback, passing old and new status
@@ -303,7 +325,8 @@ class HttpHealthCheckShareAdjuster(ShareAdjuster):
         except Exception as ex:
           logger.exception('Exception when executing callback on '
                            'BasicHttpHealthCheck status change.')
-          RUNNING_CALLBACK.labels(type=ex.message).inc()
-          self._record(HttpHealthCheckLogEvent.RUNNING_CALLBACK,
+          RUNNING_CALLBACK.labels(type=ex.args[0]).inc()
+          msg = self._record_msg(HttpHealthCheckLogEvent.RUNNING_CALLBACK,
                        HttpHealthCheckLogResult.ERROR,
                        source=source)
+          logger.error(RECORD_MESSAGE, msg)

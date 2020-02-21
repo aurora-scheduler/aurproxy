@@ -23,8 +23,6 @@ from flask import (
   Blueprint,
   Response)
 import flask_restful
-from prometheus_client import REGISTRY, core
-# from pympler import tracker
 
 from tellapart.aurproxy.app import lifecycle
 from tellapart.aurproxy.metrics.store import root_metric_store
@@ -58,27 +56,6 @@ class Health(flask_restful.Resource):
       return Response(response='Health checks failed: %s' % message)
 
     return Response(response='OK')
-
-@_bp.resource('/metrics')
-class Metrics(flask_restful.Resource):
-  def get(self):
-    '''Returns the metrics from the registry in latest text format as a string.'''
-    output = []
-    for metric in REGISTRY.collect():
-      output.append('# HELP {0} {1}\n'.format(metric.name, metric.documentation.replace('\\', r'\\').replace('\n', r'\n')))
-      output.append('# TYPE {0} {1}\n'.format(metric.name, metric.type))
-      for sample in metric.samples:
-        sample.labels['host'] = hostname
-        sample.labels['env'] = environ
-        sample.labels['domain'] = domain
-        labelstr = '{{{0}}}'.format(','.join(
-          ['{0}="{1}"'.format(k, v.replace('\\', r'\\').replace('\n', r'\n').replace('"', r'\"'))
-            for k, v in sorted(sample.labels.items())]
-        ))
-        if sample.value != 0:
-          output.append('aurproxy_{0}{1} {2}\n'.format(sample.name, labelstr, str(sample.value)))
-    # tracker.SummaryTracker().print_diff()
-    return Response(response=''.join(output).encode('utf-8'), mimetype="text/plain")
 
 @_bp.resource('/metrics.json')
 class MetricsJson(flask_restful.Resource):

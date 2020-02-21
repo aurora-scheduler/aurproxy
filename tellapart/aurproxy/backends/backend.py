@@ -17,7 +17,7 @@ from abc import (
   abstractmethod,
   abstractproperty)
 import copy
-import httplib
+import http
 import itertools
 
 from tellapart.aurproxy.config import (
@@ -126,7 +126,7 @@ class ProxyBackend(object):
         'empty_endpoint_status_code',
         route,
         required=False,
-        default=httplib.SERVICE_UNAVAILABLE)
+        default=503)
     proxy_overflow_sources = self._load_proxy_sources(overflow_sources)
     overflow_threshold_pct = self._load_config_item('overflow_threshold_pct',
                                                     route,

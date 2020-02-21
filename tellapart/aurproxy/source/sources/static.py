@@ -108,10 +108,10 @@ class StaticListProxySource(ProxySource):
 
   def start(self):
     for server in self._server_set:
-      logger.info("Add ServerList: {0}".format(server))
+      logger.debug("Add ServerList: {0}:{1}".format(server.host, server.port))
       self.add(server)
 
   def stop(self):
     for server in self._server_set:
-      logger.info("Remove ServerList: {0}".format(server))
+      logger.debug("Remove ServerList: {0}:{1}".format(server.host, server.port))
       self.remove(server)

@@ -311,7 +311,7 @@ class MirrorUpdater(object):
     try:
       with os.fdopen(os.open(command_path,
                              os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
-                             0755), 'w') as command_handle:
+                             0x755), 'w') as command_handle:
         command_handle.write(command)
         updated = True
     except Exception:

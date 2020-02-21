@@ -65,7 +65,7 @@ class SourceEndpoint(EndpointBase):
     super(SourceEndpoint, self).__init__(host, port, context)
 
   def __unicode__(self):
-    return '{0}:{1}'.format(self._host, self.port)
+    return '{0}:{1}'.format(self._host, self.port).encode('utf-8')
 
   def __hash__(self):
     return int(hashlib.md5(self.__unicode__()).hexdigest(), 16)

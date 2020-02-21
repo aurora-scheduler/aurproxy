@@ -63,7 +63,7 @@ class ProxyServer(object):
       s = '{0}{1}__'.format(s, hosts_part)
     if ports_part:
       s = '{0}{1}__'.format(s, ports_part)
-    return hashlib.sha256(s).hexdigest()
+    return hashlib.sha256(s.encode('utf-8')).hexdigest()
 
   @property
   def blueprints(self):
