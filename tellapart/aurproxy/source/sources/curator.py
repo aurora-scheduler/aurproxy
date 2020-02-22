@@ -1,4 +1,5 @@
-# Copyright 2015 TellApart, Inc.
+# Original copyright 2015 TellApart, Inc.
+# Adaptation for Apache Curator: Copyright 2016 Foursquare Labs Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,24 +35,18 @@ logger = get_logger(__name__)
 _ZK_MAP = {}
 
 
-class ServerSetSource(ProxySource):
+class CuratorServiceDiscoverySource(ProxySource):
 
   def __init__(self,
                path,
                zk_servers,
-               endpoint=None,
                signal_update_fn=None,
-               share_adjuster_factories=None,
-               zk_member_prefix=None,
-               **kw):
-    super(ServerSetSource, self).__init__(signal_update_fn,
-                                          share_adjuster_factories)
+               share_adjuster_factories=None,):
+    super(CuratorServiceDiscoverySource, self).__init__(signal_update_fn,
+                                                        share_adjuster_factories)
     self._zk_path = path
     self._zk_servers = zk_servers
-    self._endpoint = endpoint
-    self._server_set = []
-    self._zk_member_prefix = zk_member_prefix
-    self._kw = kw
+    self._service_discovery = []
 
   @property
   def blueprint(self):
@@ -65,34 +60,22 @@ class ServerSetSource(ProxySource):
     global _ZK_MAP
     if not self._zk_servers in _ZK_MAP:
       _ZK_MAP[self._zk_servers] = self._get_kazoo_client()
-    self._server_set = self._get_server_set()
-    [ self.add(self._get_endpoint(s)) for s in self._server_set ]
+    self._service_discovery = self._get_service_discovery()
+    [ self.add(self._get_endpoint(s)) for s in self._service_discovery ]
 
   def stop(self):
-    [ self.remove(self._get_endpoint(s)) for s in self._server_set ]
+    [ self.remove(self._get_endpoint(s)) for s in self._service_discovery ]
 
   @property
   def _zk(self):
     return _ZK_MAP[self._zk_servers]
 
   def _get_endpoint(self, service_instance):
-    if self._endpoint:
-      ep = service_instance.additional_endpoints.get(self._endpoint)
-    else:
-      ep = service_instance.service_endpoint
+    ep = service_instance.service_endpoint
     port_map = {}
-    source = None
-    if self._kw.get('cluster') and self._kw.get('role') and self._kw.get('env') and self._kw.get('job'):
-      source = "{0}.{1}.{2}.{3}.{4}".format(self._kw.get('cluster'),
-                                            self._kw.get('role'),
-                                            self._kw.get('env'),
-                                            self._kw.get('job'),
-                                            service_instance.shard)
-    for k, v in service_instance.additional_endpoints.items():
-      port_map[k] = v.port
     return SourceEndpoint(host=ep.host,
                           port=ep.port,
-                          context={'port_map': port_map, 'source': source})
+                          context={'port_map': port_map})
 
   def _get_kazoo_client(self):
     kc = KazooClient(
@@ -103,17 +86,11 @@ class ServerSetSource(ProxySource):
     kc.start()
     return kc
 
-  def _get_server_set(self):
-    kwargs = {}
-    if self._zk_member_prefix:
-      kwargs['member_filter'] = lambda m: m.startswith(self._zk_member_prefix)
-
-    server_set = ServerSet(self._zk,
-                           self._zk_path,
-                           on_join=self._on_join(self._zk_path),
-                           on_leave=self._on_leave(self._zk_path),
-                           **kwargs)
-    return server_set
+  def _get_service_discovery(self):
+    return ServiceDiscovery(self._zk,
+                            self._zk_path,
+                            on_join=self._on_join(self._zk_path),
+                            on_leave=self._on_leave(self._zk_path))
 
   def _set_needs_update(self, old_status, new_status):
     self._needs_update = True
@@ -129,6 +106,7 @@ class ServerSetSource(ProxySource):
     return __on_leave
 
 LOG = logger
+
 
 class Endpoint(object):
   """Represents an endpoint in ZooKeeper
@@ -158,56 +136,33 @@ class Endpoint(object):
   def __str__(self):
     return '%s:%s' % (self.host, self.port)
 
-class Member(object):
+
+class Instance(object):
   """Represents an instance of a service in ZooKeeper.
   """
 
   @classmethod
   def from_node(cls, member, data):
     blob = json.loads(data)
-    additional_endpoints = blob.get('additionalEndpoints')
-    if additional_endpoints is None:
-      raise ValueError("Expected additionalEndpoints in member data")
-    service_endpoint = blob.get('serviceEndpoint')
-    if service_endpoint is None:
-      raise ValueError("Expected serviceEndpoint in member data")
-    status = blob.get('status')
-    if status is None:
-      raise ValueError("Expected status in member data")
-
-    shard = blob.get('shard')
-    if shard is not None:
-      try:
-        shard = int(shard)
-      except ValueError:
-        LOG.warn('Unable to parse shard from %r' % shard)
-        shard = None
+    address = blob.get('address')
+    if address is None:
+      raise ValueError("Expected `address` in instance data")
+    port = blob.get('port')
+    if blob is None:
+      raise ValueError("Expected `port` in instance data")
 
     return cls(
       member=member,
-      service_endpoint=Endpoint(service_endpoint['host'],
-                                service_endpoint['port']),
-      additional_endpoints=dict((name, Endpoint(value['host'],
-                                                value['port']))
-                                for name, value
-                                in additional_endpoints.items()),
-      shard=shard,
-      status=status
+      service_endpoint=Endpoint(address, port),
     )
 
   def __init__(
       self,
       member,
-      service_endpoint,
-      additional_endpoints,
-      shard,
-      status):
+      service_endpoint,):
 
     self._name = member
     self._service_endpoint = service_endpoint
-    self._additional_endpoints = additional_endpoints
-    self._status = status
-    self._shard = shard
 
   @property
   def name(self):
@@ -217,35 +172,11 @@ class Member(object):
   def service_endpoint(self):
     return self._service_endpoint
 
-  @property
-  def additional_endpoints(self):
-    return self._additional_endpoints
-
-  @property
-  def status(self):
-    return self._status
-
-  @property
-  def shard(self):
-    return self._shard
-
-  def __addl_endpoints_str(self):
-    return ['%s=>%s' % (k, v) for k, v in self.additional_endpoints.items()]
-
   def __str__(self):
-    return 'Member(%s, %saddl: %s, status: %s)' % (
-      self.service_endpoint,
-      ('shard: %s, ' % self._shard) if self._shard is not None else '',
-      ' : '.join(self.__addl_endpoints_str()),
-      self.status
-    )
+    return 'Member({})'.format(self.service_endpoint)
 
   def _key(self):
-    return (
-      self.service_endpoint,
-      frozenset(sorted(self.__addl_endpoints_str())),
-      self.status,
-      self._shard)
+    return self.service_endpoint
 
   def __eq__(self, other):
     return isinstance(other, self.__class__) and self._key() == other._key()
@@ -253,15 +184,11 @@ class Member(object):
   def __hash__(self):
     return hash(self._key())
 
+
 ROOT_LOG = logger
 
-class ServerSet(object):
-  """A very minimal ServerSet implementation using the Kazoo Client.
-
-  This supports only getting and watching nodes in a ZK ensemble, but is a
-  drop in replacement for the twitter.common.zookeeper.ServerSet in those
-  cases.
-  """
+class ServiceDiscovery(object):
+  """A very minimal ServiceDiscovery implementation using the Kazoo Client."""
 
   class _CallbackBlocker(object):
     def __init__(self):
@@ -286,7 +213,7 @@ class ServerSet(object):
       return self._count != 0
 
   def __init__(self, zk, zk_path, on_join=None, on_leave=None,
-      member_filter=None, member_factory=Member.from_node):
+      instance_filter=None, instance_factory=Instance.from_node):
     """Initialize the ServerSet, ensuring the zk_path exists.
 
     Args:
@@ -295,13 +222,14 @@ class ServerSet(object):
                 it will be watched for creation.
       on_join - An optional function to call when members join the node.
       on_leave - An optional function to call when members leave the node.
-      member_filter - An optional function to filter children from ZK.
-      member_factory - A function to create a Member object from a znode.
+      instance_filter - An optional function to filter children from ZK.
+      instance_factory - A function to create a Member object from a znode.
     """
     def noop(*args, **kwargs): pass
     def true(*args, **kwargs): return True
+
     self._log = ROOT_LOG.getChild('[%s]' % zk_path)
-    self._log.info('TellApart ServerSet initializing on path %s' % zk_path)
+    self._log.info('TellApart ServiceDiscovery initializing on path %s' % zk_path)
 
     if not isinstance(zk, KazooClient):
       raise TypeError('zk must be an instance of a KazooClient')
@@ -318,8 +246,8 @@ class ServerSet(object):
     self._notification_queue = Queue(0)
     self._watching = False
     self._cb_blocker = self._CallbackBlocker()
-    self._member_filter = member_filter or true
-    self._member_factory = member_factory
+    self._instance_filter = instance_filter or true
+    self._instance_factory = instance_factory
     gevent.spawn(self._notification_worker)
 
     if on_join or on_leave:
@@ -360,7 +288,7 @@ class ServerSet(object):
 
   def _safe_zk_node_to_member(self, node):
     try:
-      return self._member_factory(node, self._get_info(node))
+      return self._instance_factory(node, self._get_info(node))
     except NoNodeError:
       # Its possible for the ZK node to be removed between getting it
       # from the list and querying it, if so, just skip it.
@@ -368,7 +296,7 @@ class ServerSet(object):
 
   def _zk_nodes_to_members(self, nodes):
     return [m for m in (self._safe_zk_node_to_member(n) for n in nodes
-                        if self._member_filter(n))
+                        if self._instance_filter(n))
             if m]
 
   def _monitor(self):
@@ -442,7 +370,7 @@ class ServerSet(object):
     Args:
       children - The new set of child nodes.
     """
-    children = set([c for c in children if self._member_filter(c)])
+    children = set([c for c in children if self._instance_filter(c)])
     current_nodes = set(self._nodes)
     self._nodes = children
     new_nodes = children - current_nodes

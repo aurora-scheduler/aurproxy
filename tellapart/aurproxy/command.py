@@ -11,18 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import gc
+import tracemalloc
 
 import gevent.monkey
+from gevent import Greenlet
+
 gevent.monkey.patch_all()
 
 import commandr
 from flask import Flask
-from gevent.wsgi import WSGIServer
+from gevent.pywsgi import WSGIServer
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from prometheus_client import make_wsgi_app
 import json
 import logging
 
 from tellapart.aurproxy.app.module.http import lifecycle_blueprint
-from tellapart.aurproxy.app.lifecycle import register_shutdown_handler
+from tellapart.aurproxy.app.lifecycle import (
+  execute_shutdown_handlers,
+  register_healthcheck_handler,
+  register_shutdown_handler)
 from tellapart.aurproxy.metrics.store import (
   add_publisher,
   set_root_prefix)
@@ -40,6 +49,7 @@ from tellapart.aurproxy.exception import AurProxyConfigException
 
 logger = get_logger(__name__)
 logging.getLogger('requests').setLevel(logging.WARNING)
+spawn_later = Greenlet.spawn_later
 
 _DEFAULT_BACKEND = 'nginx'
 _DEFAULT_MAX_UPDATE_FREQUENCY = 10
@@ -168,6 +178,7 @@ def run(management_port,
         registerer = load_cli_plugin(registration_class, registration_arg)
         registerer.add()
         register_shutdown_handler(registerer.remove)
+        register_healthcheck_handler(registerer.check)
       except Exception:
         logger.exception('Registration failure.')
         raise
@@ -319,10 +330,28 @@ def _start_web(port, sentry_dsn=None, blueprints=None):
       app.register_blueprint(blueprint)
   if sentry_dsn:
     app = setup_sentry_wsgi(app, sentry_dsn)
-  http_server = WSGIServer(('0.0.0.0', int(port)), app)
-  http_server.serve_forever()
+  app_dispatch = DispatcherMiddleware(app, {'/metrics': make_wsgi_app()})
+  http_server = WSGIServer(('0.0.0.0', int(port)), app_dispatch)
+  try:
+      http_server.serve_forever()
+  except KeyboardInterrupt:
+      logger.info('Keyboard interrupt, executing shutdown hooks...')
+      execute_shutdown_handlers()
+
+def _momory_logger():
+  current = tracemalloc.take_snapshot()
+  logger.info("================== Top Current:")
+  for i, stat in enumerate(current.statistics('filename')[:10], 1):
+    logger.info('================== top_current: ' + str(i) + ' ' + str(stat))
+  logger.info("================== Top Current:")
+  tracemalloc.clear_traces()
+  spawn_later(60, _momory_logger)
 
 if __name__ == '__main__':
+  tracemalloc.start(25)
+  spawn_later(60, _momory_logger)
+  gc.set_debug(gc.DEBUG_LEAK)
+  gc.enable()
   try:
     commandr.Run()
   except KeyboardInterrupt:

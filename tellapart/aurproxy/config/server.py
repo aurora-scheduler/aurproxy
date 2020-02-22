@@ -13,13 +13,40 @@
 # limitations under the License.
 
 import itertools
+import hashlib
+from tellapart.aurproxy.util import slugify, get_logger
 
-from tellapart.aurproxy.util import slugify
+logger = get_logger(__name__)
+
+
+class Port(object):
+  def __init__(self, port):
+    if ':' in port:
+      item = port.split(':')
+      self.port = item[0]
+      self.use_ssl = item[1] == 'use_ssl'
+    else:
+      self.port = port
+      self.use_ssl = False
+
+  def __unicode__(self):
+    return u'{}:{}'.format(self.port, self.use_ssl)
+
+  def __str__(self):
+    return '{}:{}'.format(self.port, 'ssl' if self.use_ssl else '')
+
 
 class ProxyServer(object):
-  def __init__(self, hosts, ports, healthcheck_route, routes, streams, context):
+  def __init__(self,
+               hosts,
+               ports,
+               healthcheck_route,
+               routes,
+               streams,
+               context):
     self.hosts = hosts
-    self.ports = ports
+    self.ports = [Port(x) for x in ports]
+    self.use_ssl = any([True for x in self.ports if x.use_ssl])
     self.healthcheck_route = healthcheck_route
     self.routes = routes
     self.streams = streams
@@ -30,13 +57,13 @@ class ProxyServer(object):
     hosts_part = ''
     if self.hosts:
       hosts_part = '__'.join([slugify(h) for h in self.hosts])
-    ports_part = '__'.join([slugify(p) for p in self.ports])
+    ports_part = '__'.join([slugify(str(p)) for p in self.ports])
     s = 's__'
     if hosts_part:
       s = '{0}{1}__'.format(s, hosts_part)
     if ports_part:
       s = '{0}{1}__'.format(s, ports_part)
-    return s
+    return hashlib.sha256(s.encode('utf-8')).hexdigest()
 
   @property
   def blueprints(self):

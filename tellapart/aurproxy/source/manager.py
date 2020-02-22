@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import hashlib
 from collections import defaultdict
 from datetime import datetime
 from gevent import spawn_later
@@ -130,7 +131,7 @@ class SourceGroupManager(object):
     """
     A slug string created from the slugs of all primary sources in the group.
     """
-    return '__'.join([s.slug for s in self._sources])
+    return hashlib.sha256('__'.join([s.slug for s in self._sources]).encode('utf-8')).hexdigest()
 
   def _should_adjust_weight(self):
     now = datetime.now()

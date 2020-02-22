@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Simple shell hook to activate the virtualenv as installed by the Makefile.
+
+if [ ! -f venv/bin/activate ]; then
+    echo "No virtualenv found - run 'make setup' first!" >&2
+    exit 1
+fi
+
+. venv/bin/activate
+
+python3 -m tellapart.aurproxy.command "$@"

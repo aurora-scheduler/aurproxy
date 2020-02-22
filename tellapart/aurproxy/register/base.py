@@ -44,6 +44,16 @@ class BaseRegisterer(object):
   def remove(self):
     raise NotImplementedError('remove')
 
+  def check(self):
+    """
+    Returns True or False depending on whether the registerer's
+    effect of calling add is still true.
+
+    This function may cache or determine its own cadence for determining state
+    since it may be called more frequently than desired.
+    """
+    return True, 'OK'
+
   def synchronize(self, write):
     raise NotImplementedError('synchronize')
 
@@ -61,7 +71,8 @@ class BaseRegisterer(object):
       msg - str - Extra message to include.
       log_fn - Logger method to use.
     """
-    if isinstance(reasons, basestring):
+    # Joe A: changed basestring to str
+    if isinstance(reasons, str):
       reasons = [reasons]
 
     reasons = ','.join(reasons) if reasons else ''

@@ -17,7 +17,7 @@ from abc import (
   abstractmethod,
   abstractproperty)
 import copy
-import httplib
+import http
 import itertools
 
 from tellapart.aurproxy.config import (
@@ -32,9 +32,12 @@ from tellapart.aurproxy.util import (
   load_klass_factory,
   load_klass_plugin)
 
+from prometheus_client import Counter
+
 logger = get_logger(__name__)
 
 _METRIC_SIGNAL_UPDATE_EXCEPTION = 'signal_update_exception'
+METRIC_SIGNAL_UPDATE_EXCEPTION = Counter('signal_update_exception', 'Total signal_update_exception', ['type'])
 
 
 class ProxyBackend(object):
@@ -111,7 +114,10 @@ class ProxyBackend(object):
   def _load_proxy_route(self, route):
     locations = self._load_config_item('locations', route, required=True)
     sources = self._load_config_item('sources', route, required=True)
+    context = self._load_config_item('context', route, required=False)
     proxy_sources = self._load_proxy_sources(sources)
+    use_https = self._load_config_item('use_https', route, required=False, default=False)
+    route_path = self._load_config_item('route_path', route, required=False, default='')
     overflow_sources = self._load_config_item('overflow_sources',
                                               route,
                                               required=False,
@@ -120,7 +126,7 @@ class ProxyBackend(object):
         'empty_endpoint_status_code',
         route,
         required=False,
-        default=httplib.SERVICE_UNAVAILABLE)
+        default=503)
     proxy_overflow_sources = self._load_proxy_sources(overflow_sources)
     overflow_threshold_pct = self._load_config_item('overflow_threshold_pct',
                                                     route,
@@ -131,7 +137,7 @@ class ProxyBackend(object):
                                               self._signal_update_fn,)
 
     return ProxyRoute(
-        locations, empty_endpoint_status_code, source_group_manager)
+        locations, empty_endpoint_status_code, source_group_manager, use_https, route_path, context)
 
   def _load_proxy_sources(self, sources):
     proxy_sources = []
@@ -192,9 +198,10 @@ class ProxyBackend(object):
 
     try:
       self._signal_update_fn()
-    except Exception:
+    except Exception as ex:
       logger.exception("Failed to signal update.")
       increment_counter(_METRIC_SIGNAL_UPDATE_EXCEPTION)
+      METRIC_SIGNAL_UPDATE_EXCEPTION.labels(type=ex.message).inc()
 
   def start_discovery(self, weight_adjustment_start):
     if not self._started_discovery:

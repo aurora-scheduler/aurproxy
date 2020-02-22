@@ -36,7 +36,10 @@ class MesosMasterProxySource(ServerSetSource):
     self._zk_server_set = None
     self._next_on_join = self._on_join(mesos_master_path)
     self._next_on_leave = self._on_leave(mesos_master_path)
-
+    kwargs['cluster'] = kwargs.get('cluster', '')
+    kwargs['role'] = kwargs.get('role', '')
+    kwargs['env'] = kwargs.get('environment', '')
+    kwargs['job'] = kwargs.get('job', '')
     super(MesosMasterProxySource, self).__init__(mesos_master_path, zk_servers, **kwargs)
 
   def _parse_member(self, node, data):
